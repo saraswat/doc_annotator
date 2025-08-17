@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Technical Specification</title>
+    <style>
+        body { 
+            font-family: 'Consolas', 'Monaco', monospace; 
+            margin: 40px; 
+            line-height: 1.6; 
+            background-color: #f8f9fa;
+        }
+        h1 { color: #212529; border-bottom: 3px solid #007bff; }
+        h2 { color: #495057; margin-top: 25px; }
+        h3 { color: #6c757d; }
+        .code-block { 
+            background-color: #2d3748; 
+            color: #e2e8f0; 
+            padding: 15px; 
+            border-radius: 8px; 
+            overflow-x: auto; 
+            margin: 15px 0;
+            font-family: 'Fira Code', monospace;
+        }
+        .endpoint { 
+            background-color: #e3f2fd; 
+            padding: 10px; 
+            border-left: 4px solid #2196f3;
+            margin: 10px 0;
+        }
+        .method-get { color: #28a745; font-weight: bold; }
+        .method-post { color: #007bff; font-weight: bold; }
+        .method-put { color: #ffc107; font-weight: bold; }
+        .method-delete { color: #dc3545; font-weight: bold; }
+        table { border-collapse: collapse; width: 100%; margin: 20px 0; }
+        th, td { border: 1px solid #dee2e6; padding: 12px; text-align: left; }
+        th { background-color: #f8f9fa; font-weight: 600; }
+    </style>
+</head>
+<body>
+    <h1>RESTful API Technical Specification v2.1</h1>
+    
+    <h2>Overview</h2>
+    <p>This document outlines the technical specifications for our RESTful API service. The API follows standard HTTP protocols and returns JSON-formatted responses for all endpoints.</p>
+    
+    <p><strong>Base URL:</strong> <code>https://api.example.com/v2</code></p>
+    <p><strong>Authentication:</strong> Bearer Token (JWT)</p>
+    <p><strong>Content-Type:</strong> application/json</p>
+    
+    <h2>Authentication</h2>
+    <p>All API requests require authentication using a JSON Web Token (JWT). Include the token in the Authorization header:</p>
+    
+    <div class="code-block">
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c
+    </div>
+    
+    <h2>User Management Endpoints</h2>
+    
+    <div class="endpoint">
+        <h3><span class="method-get">GET</span> /users</h3>
+        <p>Retrieve a list of all users with pagination support.</p>
+        
+        <h4>Query Parameters:</h4>
+        <table>
+            <tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr>
+            <tr><td>page</td><td>integer</td><td>No</td><td>Page number (default: 1)</td></tr>
+            <tr><td>limit</td><td>integer</td><td>No</td><td>Items per page (default: 50)</td></tr>
+            <tr><td>search</td><td>string</td><td>No</td><td>Search term for user filtering</td></tr>
+        </table>
+        
+        <h4>Response Example:</h4>
+        <div class="code-block">
+{
+  "status": "success",
+  "data": {
+    "users": [
+      {
+        "id": 1,
+        "username": "john_doe",
+        "email": "john@example.com",
+        "created_at": "2024-01-15T10:30:00Z",
+        "is_active": true
+      }
+    ],
+    "pagination": {
+      "current_page": 1,
+      "total_pages": 5,
+      "total_items": 247
+    }
+  }
+}
+        </div>
+    </div>
+    
+    <div class="endpoint">
+        <h3><span class="method-post">POST</span> /users</h3>
+        <p>Create a new user account.</p>
+        
+        <h4>Request Body:</h4>
+        <div class="code-block">
+{
+  "username": "new_user",
+  "email": "user@example.com",
+  "password": "secure_password_123",
+  "profile": {
+    "first_name": "Jane",
+    "last_name": "Smith",
+    "phone": "+1-555-0123"
+  }
+}
+        </div>
+        
+        <h4>Response (201 Created):</h4>
+        <div class="code-block">
+{
+  "status": "success",
+  "message": "User created successfully",
+  "data": {
+    "user_id": 248,
+    "username": "new_user",
+    "email": "user@example.com"
+  }
+}
+        </div>
+    </div>
+    
+    <h2>Document Management Endpoints</h2>
+    
+    <div class="endpoint">
+        <h3><span class="method-get">GET</span> /documents/{document_id}</h3>
+        <p>Retrieve a specific document by its unique identifier.</p>
+        
+        <h4>Path Parameters:</h4>
+        <table>
+            <tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr>
+            <tr><td>document_id</td><td>integer</td><td>Yes</td><td>Unique document identifier</td></tr>
+        </table>
+        
+        <h4>Response Example:</h4>
+        <div class="code-block">
+{
+  "status": "success",
+  "data": {
+    "id": 42,
+    "title": "Technical Requirements Document",
+    "content": "This document outlines...",
+    "author": {
+      "id": 15,
+      "username": "tech_writer"
+    },
+    "created_at": "2024-02-10T14:22:00Z",
+    "updated_at": "2024-02-12T09:15:30Z",
+    "version": "1.2",
+    "tags": ["technical", "requirements", "specification"]
+  }
+}
+        </div>
+    </div>
+    
+    <div class="endpoint">
+        <h3><span class="method-put">PUT</span> /documents/{document_id}</h3>
+        <p>Update an existing document. Requires appropriate permissions.</p>
+        
+        <h4>Request Body:</h4>
+        <div class="code-block">
+{
+  "title": "Updated Technical Requirements Document",
+  "content": "This updated document now includes...",
+  "tags": ["technical", "requirements", "specification", "v2"]
+}
+        </div>
+    </div>
+    
+    <h2>Error Handling</h2>
+    <p>The API uses standard HTTP status codes to indicate the success or failure of requests:</p>
+    
+    <table>
+        <tr><th>Status Code</th><th>Description</th><th>Response Format</th></tr>
+        <tr><td>200</td><td>Success</td><td>Standard success response</td></tr>
+        <tr><td>201</td><td>Created</td><td>Resource created successfully</td></tr>
+        <tr><td>400</td><td>Bad Request</td><td>Invalid request parameters</td></tr>
+        <tr><td>401</td><td>Unauthorized</td><td>Authentication required</td></tr>
+        <tr><td>403</td><td>Forbidden</td><td>Insufficient permissions</td></tr>
+        <tr><td>404</td><td>Not Found</td><td>Resource does not exist</td></tr>
+        <tr><td>500</td><td>Internal Server Error</td><td>Server-side error</td></tr>
+    </table>
+    
+    <h4>Error Response Format:</h4>
+    <div class="code-block">
+{
+  "status": "error",
+  "error": {
+    "code": "INVALID_REQUEST",
+    "message": "The request contains invalid parameters",
+    "details": {
+      "field": "email",
+      "reason": "Invalid email format"
+    }
+  }
+}
+    </div>
+    
+    <h2>Rate Limiting</h2>
+    <p>API requests are subject to rate limiting to ensure fair usage:</p>
+    <ul>
+        <li><strong>Authenticated requests:</strong> 1000 requests per hour</li>
+        <li><strong>Unauthenticated requests:</strong> 100 requests per hour</li>
+        <li><strong>Bulk operations:</strong> 50 requests per hour</li>
+    </ul>
+    
+    <p>Rate limit information is included in response headers:</p>
+    <div class="code-block">
+X-RateLimit-Limit: 1000
+X-RateLimit-Remaining: 847
+X-RateLimit-Reset: 1642694400
+    </div>
+    
+    <h2>Webhooks</h2>
+    <p>The API supports webhook notifications for real-time updates. Configure webhook endpoints through the admin dashboard or via the <code>/webhooks</code> endpoint.</p>
+    
+    <p>Supported events:</p>
+    <ul>
+        <li><code>user.created</code> - New user registration</li>
+        <li><code>document.updated</code> - Document modification</li>
+        <li><code>document.deleted</code> - Document removal</li>
+    </ul>
+    
+    <h2>SDK and Libraries</h2>
+    <p>Official SDK libraries are available for popular programming languages:</p>
+    <ul>
+        <li>JavaScript/Node.js: <code>npm install @example/api-client</code></li>
+        <li>Python: <code>pip install example-api-client</code></li>
+        <li>PHP: <code>composer require example/api-client</code></li>
+        <li>Java: Available on Maven Central</li>
+    </ul>
+</body>
+</html>
