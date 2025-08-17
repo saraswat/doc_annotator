@@ -77,35 +77,51 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ url, annotations = [], onTextSele
   }, []);
 
   // Convert our annotations to react-pdf-selection format
-  
   const selectionAnnotations: TextSelectionWithCSSProperties<any>[] = annotations
-    .filter(ann => ann.coordinates && ann.pageNumber && 
-      !isNaN(ann.coordinates.x) && !isNaN(ann.coordinates.y) && 
-      !isNaN(ann.coordinates.width) && !isNaN(ann.coordinates.height))
+    .filter(ann => {
+      // Filter for valid PDF annotations
+      const hasValidCoords = ann.coordinates && 
+        typeof ann.coordinates.x === 'number' && 
+        typeof ann.coordinates.y === 'number' && 
+        typeof ann.coordinates.width === 'number' && 
+        typeof ann.coordinates.height === 'number' &&
+        !isNaN(ann.coordinates.x) && !isNaN(ann.coordinates.y) && 
+        !isNaN(ann.coordinates.width) && !isNaN(ann.coordinates.height);
+      
+      const hasValidPage = ann.pageNumber && typeof ann.pageNumber === 'number';
+      
+      console.log('Filtering annotation:', {
+        id: ann.id,
+        hasValidCoords,
+        hasValidPage,
+        coordinates: ann.coordinates,
+        pageNumber: ann.pageNumber
+      });
+      
+      return hasValidCoords && hasValidPage;
+    })
     .map(ann => {
-      
-      // Check if coordinates are already in percentage format or decimal
-      const rawX = ann.coordinates.x;
-      const rawY = ann.coordinates.y;
-      const rawWidth = ann.coordinates.width;
-      const rawHeight = ann.coordinates.height;
-      
-      
-      // Use coordinates as-is since they're already in 0-1 normalized range
+      // Ensure coordinates are in 0-1 normalized range
       const coords = {
-        x: Number(rawX),      
-        y: Number(rawY),      
-        width: Number(rawWidth),   
-        height: Number(rawHeight)  
+        x: Number(ann.coordinates.x),      
+        y: Number(ann.coordinates.y),      
+        width: Number(ann.coordinates.width),   
+        height: Number(ann.coordinates.height)  
       };
       
+      console.log('Converting annotation to selection format:', {
+        id: ann.id,
+        originalCoords: ann.coordinates,
+        normalizedCoords: coords,
+        pageNumber: ann.pageNumber
+      });
       
-      const vvv = {
+      return {
         id: ann.id,
         text: ann.text,
         comment: ann.comment,
         author: ann.author,
-        pageNumber: ann.pageNumber, // Add pageNumber to top level
+        pageNumber: ann.pageNumber,
         position: {
           pageNumber: ann.pageNumber,
           boundingRect: {
@@ -114,7 +130,7 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ url, annotations = [], onTextSele
             right: coords.x + coords.width,      
             bottom: coords.y + coords.height   
           },
-          rects: ann.coordinates.rects ? ann.coordinates.rects : [{
+          rects: ann.coordinates.rects || [{
             left: coords.x,
             top: coords.y,
             right: coords.x + coords.width,
@@ -122,7 +138,6 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ url, annotations = [], onTextSele
           }]
         }
       };
-      return vvv;
     });
 
 

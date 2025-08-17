@@ -46,6 +46,10 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api"
     PROJECT_NAME: str = "Document Annotation System"
     
+    # Initial Admin User
+    ADMIN_USER_EMAIL: str = ""
+    ADMIN_INITIAL_PASSWORD: str = ""
+    
     class Config:
         env_file = ".env"
         case_sensitive = True

@@ -8,10 +8,10 @@ from datetime import datetime
 from typing import Dict, Any
 
 from app.core.database import get_async_session
-from app.core.security import create_access_token, create_refresh_token, get_current_user
+from app.core.security import create_access_token, create_refresh_token, get_current_user, authenticate_user, get_password_hash, generate_password_reset_token
 from app.core.config import settings
 from app.models.user import User
-from app.schemas.user import UserResponse, UserCreate
+from app.schemas.user import UserResponse, UserCreate, UserPasswordLogin, UserPasswordReset
 
 router = APIRouter()
 security = HTTPBearer()
@@ -267,3 +267,58 @@ async def get_current_user_info(current_user: User = Depends(get_current_user)):
 async def logout():
     """Logout user (client should delete tokens)"""
     return {"message": "Logged out successfully"}
+
+@router.post("/login/password")
+async def login_with_password(
+    user_data: UserPasswordLogin,
+    db: AsyncSession = Depends(get_async_session)
+):
+    """Login with email and password"""
+    user = await authenticate_user(user_data.email, user_data.password, db)
+    
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password"
+        )
+    
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User account is inactive"
+        )
+    
+    # Generate tokens
+    access_token = create_access_token(subject=user.id)
+    refresh_token = create_refresh_token(subject=user.id)
+    
+    # Update last login
+    user.last_login = datetime.utcnow()
+    await db.commit()
+    await db.refresh(user)
+    
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer",
+        "user": UserResponse.from_orm(user),
+        "password_reset_required": user.password_reset_required
+    }
+
+@router.post("/password/change")
+async def change_password(
+    password_data: UserPasswordReset,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_async_session)
+):
+    """Change user's password"""
+    # Update password
+    current_user.hashed_password = get_password_hash(password_data.new_password)
+    current_user.password_reset_required = False
+    current_user.password_reset_token = None
+    current_user.password_reset_expires = None
+    
+    await db.commit()
+    await db.refresh(current_user)
+    
+    return {"message": "Password changed successfully"}

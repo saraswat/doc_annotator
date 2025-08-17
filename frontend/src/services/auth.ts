@@ -43,6 +43,27 @@ class AuthService {
   async logout(): Promise<void> {
     await apiService.post('/auth/logout');
   }
+
+  async loginWithPassword(email: string, password: string): Promise<AuthTokens & { password_reset_required: boolean }> {
+    const response = await apiService.post('/auth/login/password', {
+      email,
+      password
+    });
+    
+    return {
+      accessToken: response.data.access_token,
+      refreshToken: response.data.refresh_token,
+      tokenType: response.data.token_type || 'bearer',
+      user: response.data.user,
+      password_reset_required: response.data.password_reset_required
+    };
+  }
+
+  async changePassword(newPassword: string): Promise<void> {
+    await apiService.post('/auth/password/change', {
+      new_password: newPassword
+    });
+  }
 }
 
 export const authService = new AuthService();

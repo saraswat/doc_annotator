@@ -11,6 +11,8 @@ import ProtectedRoute from './components/Auth/ProtectedRoute';
 import DocumentListWithLayout from './components/DocumentViewer/DocumentListWithLayout';
 import DocumentViewerWithLayout from './components/DocumentViewer/DocumentViewerWithLayout';
 import DocumentSelector from './components/DocumentSelector/DocumentSelector';
+import AdminDashboard from './components/Admin/AdminDashboard';
+import PasswordChangeRequired from './components/Auth/PasswordChangeRequired';
 
 // Contexts
 import { AuthProvider } from './contexts/AuthContext';
@@ -25,6 +27,13 @@ function App() {
           {/* Public routes */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/auth/callback" element={<OAuthCallback />} />
+          
+          {/* Password change required route */}
+          <Route path="/password-change-required" element={
+            <ProtectedRoute>
+              <PasswordChangeRequired />
+            </ProtectedRoute>
+          } />
           
           {/* Protected routes */}
           <Route path="/" element={
@@ -58,6 +67,14 @@ function App() {
                   <DocumentViewerWithLayout />
                 </AnnotationProvider>
               </DocumentProvider>
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/admin" element={
+            <ProtectedRoute>
+              <MainLayout>
+                <AdminDashboard />
+              </MainLayout>
             </ProtectedRoute>
           } />
           

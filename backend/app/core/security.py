@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 from typing import Any, Union, Optional
+import secrets
 from jose import jwt, JWTError
 from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, status
@@ -88,3 +89,35 @@ def validate_token(token: str) -> Optional[str]:
         return user_id
     except JWTError:
         return None
+
+def generate_password_reset_token() -> str:
+    """Generate a secure password reset token"""
+    return secrets.token_urlsafe(32)
+
+async def get_current_admin_user(
+    current_user: User = Depends(get_current_user)
+) -> User:
+    """Verify current user is an admin"""
+    if not current_user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required"
+        )
+    return current_user
+
+async def authenticate_user(
+    email: str, 
+    password: str, 
+    db: AsyncSession
+) -> Optional[User]:
+    """Authenticate user with email and password"""
+    result = await db.execute(select(User).where(User.email == email))
+    user = result.scalar_one_or_none()
+    
+    if not user or not user.hashed_password:
+        return None
+    
+    if not verify_password(password, user.hashed_password):
+        return None
+    
+    return user

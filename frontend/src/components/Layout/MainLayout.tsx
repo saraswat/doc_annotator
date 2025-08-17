@@ -19,6 +19,7 @@ import apiService from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import BulkUploadDialog from '../Upload/BulkUploadDialog';
 import SingleUploadDialog from '../Upload/SingleUploadDialog';
+import Header from './Header';
 
 interface Document {
   id: number;
@@ -200,8 +201,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children, currentDocumentId, on
   }
 
   return (
-    <Box sx={{ height: '100vh', display: 'flex' }}>
-      {/* Left Sidebar - Key-Date Selector and Controls */}
+    <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
+      <Header />
+      <Box sx={{ flex: 1, display: 'flex' }}>
+        {/* Left Sidebar - Key-Date Selector and Controls */}
       <Box sx={{ 
         width: 300, 
         borderRight: 1, 
@@ -385,9 +388,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children, currentDocumentId, on
         </Box>
       </Box>
 
-      {/* Main Content Area */}
-      <Box sx={{ flex: 1, overflow: 'hidden' }}>
-        {children}
+        {/* Main Content Area */}
+        <Box sx={{ flex: 1, overflow: 'hidden' }}>
+          {children}
+        </Box>
       </Box>
 
       {/* Bulk Upload Dialog */}

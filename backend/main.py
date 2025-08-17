@@ -7,7 +7,7 @@ import os
 
 from app.core.config import settings
 from app.core.database import create_db_and_tables
-from app.api import auth, documents, annotations
+from app.api import auth, documents, annotations, admin
 from app.core.websocket import sio_app
 
 @asynccontextmanager
@@ -41,6 +41,7 @@ app.mount("/socket.io", sio_app)
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(documents.router, prefix="/api/documents", tags=["documents"])
 app.include_router(annotations.router, prefix="/api/annotations", tags=["annotations"])
+app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
 
 # Create uploads directory if it doesn't exist
 uploads_dir = "uploads"

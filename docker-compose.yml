@@ -39,6 +39,8 @@ services:
       SECRET_KEY: ${SECRET_KEY:-your-secret-key-here}
       OAUTH_CLIENT_ID: ${OAUTH_CLIENT_ID}
       OAUTH_CLIENT_SECRET: ${OAUTH_CLIENT_SECRET}
+      ADMIN_USER_EMAIL: ${ADMIN_USER_EMAIL}
+      ADMIN_INITIAL_PASSWORD: ${ADMIN_INITIAL_PASSWORD}
       CORS_ORIGINS: '["http://localhost:3000", "http://localhost:8001"]'
     volumes:
       - ./backend:/app

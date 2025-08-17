@@ -1,14 +1,15 @@
 export interface User {
-  id: string;
+  id: number;
   email: string;
   name: string;
   avatarUrl?: string;
-  oauthProvider: string;
-  oauthId: string;
+  oauthProvider?: string;
+  oauthId?: string;
   isActive: boolean;
   isAdmin: boolean;
-  createdAt: Date;
-  lastLogin?: Date;
+  createdAt: string;
+  lastLogin?: string;
+  passwordResetRequired?: boolean;
 }
 
 export interface AuthTokens {

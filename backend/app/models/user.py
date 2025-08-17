@@ -12,9 +12,15 @@ class User(Base):
     name = Column(String, nullable=False)
     avatar_url = Column(String, nullable=True)
     
-    # OAuth fields
-    oauth_provider = Column(String, nullable=False)  # google, azure, okta
-    oauth_id = Column(String, nullable=False)
+    # OAuth fields (nullable for password-based users)
+    oauth_provider = Column(String, nullable=True)  # google, azure, okta, or None for password
+    oauth_id = Column(String, nullable=True)
+    
+    # Password authentication fields
+    hashed_password = Column(String, nullable=True)
+    password_reset_required = Column(Boolean, default=False)
+    password_reset_token = Column(String, nullable=True)
+    password_reset_expires = Column(DateTime, nullable=True)
     
     # User status
     is_active = Column(Boolean, default=True)
