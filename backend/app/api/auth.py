@@ -329,6 +329,9 @@ async def login_with_cookie(
     db: AsyncSession = Depends(get_async_session)
 ):
     """Login using crisp_user cookie for intranet environments"""
+    print(f"🔍 Cookie authentication request received from: {request.client.host}")
+    print(f"🍪 All cookies: {dict(request.cookies)}")
+    
     # Get crisp_user cookie
     crisp_user = request.cookies.get("crisp_user")
     

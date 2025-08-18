@@ -57,7 +57,14 @@ const LoginPage: React.FC = () => {
           navigate('/selector');
         } catch (error) {
           console.error('Auto-login failed:', error);
+          console.error('Auto-login error details:', {
+            message: error?.message,
+            response: error?.response?.data,
+            status: error?.response?.status,
+            statusText: error?.response?.statusText
+          });
           setIsRedirecting(false);
+          setError(`Auto-login failed: ${error?.response?.data?.detail || error?.message || 'Unknown error'}`);
           toast.error('Auto-login failed. Please contact your system administrator.');
         }
       }, 1500); // 1.5 second delay to show the message

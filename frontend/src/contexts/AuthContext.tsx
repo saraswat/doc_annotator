@@ -86,6 +86,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           toast.success(`Welcome ${tokens.user.name}! Redirecting to documents...`);
         } catch (error) {
           console.error('❌ Frontend: Cookie authentication failed:', error);
+          console.error('❌ Error details:', {
+            message: error?.message,
+            response: error?.response?.data,
+            status: error?.response?.status,
+            statusText: error?.response?.statusText
+          });
         }
       } else {
         console.log('ℹ️ Frontend: No crisp_user cookie found');
