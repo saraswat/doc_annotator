@@ -323,7 +323,7 @@ async def change_password(
     
     return {"message": "Password changed successfully"}
 
-@router.post("/login/cookie")
+@router.get("/login/cookie")
 async def login_with_cookie(
     request: Request,
     db: AsyncSession = Depends(get_async_session)

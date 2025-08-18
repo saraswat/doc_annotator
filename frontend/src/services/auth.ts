@@ -66,7 +66,7 @@ class AuthService {
   }
 
   async loginWithCookie(): Promise<AuthTokens> {
-    const response = await apiService.post('/auth/login/cookie');
+    const response = await apiService.get('/auth/login/cookie');
     
     return {
       accessToken: response.data.access_token,
