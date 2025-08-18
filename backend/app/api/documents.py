@@ -182,6 +182,7 @@ async def upload_single_document(
 @router.post("/bulk-upload")
 async def bulk_upload_documents(
     file: UploadFile = File(...),
+    make_public: bool = Form(False),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_async_session)
 ):
@@ -315,7 +316,7 @@ async def bulk_upload_documents(
                             document_key=document_key,
                             document_date=document_date,
                             owner_id=current_user.id,
-                            is_public=False,
+                            is_public=make_public,
                             allow_comments=True,
                             processing_status="completed"
                         )
@@ -371,6 +372,7 @@ async def bulk_upload_documents(
 async def bulk_upload_directory(
     files: List[UploadFile] = File(...),
     paths: List[str] = Form(...),
+    make_public: bool = Form(False),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_async_session)
 ):
@@ -463,8 +465,9 @@ async def bulk_upload_directory(
                 content="",  # Will be processed later
                 document_type=document_type,
                 file_path=str(relative_storage_path),
-                key=document_key,
-                date=document_date
+                document_key=document_key,
+                document_date=document_date,
+                is_public=make_public
             )
             
             # Save to database

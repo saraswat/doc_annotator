@@ -30,13 +30,8 @@ class Settings(BaseSettings):
     # Okta OAuth
     OKTA_DOMAIN: str = ""
     
-    # CORS
-    CORS_ORIGINS: List[str] = [
-        "https://localhost:3000", 
-        "https://localhost:8000",
-        "https://foo.com:40000",  # Add your intranet frontend
-        "https://foo.com:4001"    # Add your intranet backend
-    ]
+    # CORS - Allow all origins for intranet deployment
+    CORS_ORIGINS: List[str] = ["*"]
     
     @classmethod
     def parse_cors_origins(cls, origins_str: str) -> List[str]:

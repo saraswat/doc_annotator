@@ -16,7 +16,9 @@ import {
   Divider,
   Paper,
   ToggleButtonGroup,
-  ToggleButton
+  ToggleButton,
+  FormControlLabel,
+  Checkbox
 } from '@mui/material';
 import {
   CloudUpload,
@@ -53,6 +55,7 @@ const BulkUploadDialog: React.FC<BulkUploadDialogProps> = ({
   const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
   const [uploadMode, setUploadMode] = useState<'file' | 'directory'>('file');
   const [uploading, setUploading] = useState(false);
+  const [makePublic, setMakePublic] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadStatus, setUploadStatus] = useState<UploadStatus[]>([]);
@@ -113,6 +116,9 @@ const BulkUploadDialog: React.FC<BulkUploadDialogProps> = ({
     try {
       const formData = new FormData();
       
+      // Add public flag
+      formData.append('make_public', makePublic.toString());
+      
       if (uploadMode === 'file' && selectedFile) {
         formData.append('file', selectedFile);
       } else if (uploadMode === 'directory' && selectedFiles) {
@@ -170,9 +176,11 @@ const BulkUploadDialog: React.FC<BulkUploadDialogProps> = ({
   const handleClose = () => {
     if (!uploading) {
       setSelectedFile(null);
+      setSelectedFiles(null);
       setUploadStatus([]);
       setError(null);
       setUploadProgress(0);
+      setMakePublic(false);
       onClose();
     }
   };
@@ -280,6 +288,29 @@ const BulkUploadDialog: React.FC<BulkUploadDialogProps> = ({
               • Document titles will be generated from filenames
             </Typography>
           </Alert>
+          
+          {/* Public Documents Option */}
+          <Box sx={{ mb: 3 }}>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={makePublic}
+                  onChange={(e) => setMakePublic(e.target.checked)}
+                  disabled={uploading}
+                />
+              }
+              label={
+                <Box>
+                  <Typography variant="body2" component="span">
+                    Make documents public
+                  </Typography>
+                  <Typography variant="caption" display="block" color="text.secondary">
+                    Public documents can be viewed by all users without restrictions
+                  </Typography>
+                </Box>
+              }
+            />
+          </Box>
         </Box>
 
         {/* File Selection */}
