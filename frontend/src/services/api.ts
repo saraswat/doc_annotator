@@ -3,6 +3,7 @@ import toast from 'react-hot-toast';
 
 const API_URL = (process.env as any).REACT_APP_API_URL || 'https://localhost:8000/api';
 
+
 class ApiService {
   private api: AxiosInstance;
 
@@ -12,15 +13,23 @@ class ApiService {
       headers: {
         'Content-Type': 'application/json',
       },
+      withCredentials: true, // Include cookies in requests
     });
 
-    // Request interceptor to add auth token
+    // Request interceptor to add auth token and crisp_user cookie
     this.api.interceptors.request.use(
       (config: any) => {
         const token = localStorage.getItem('access_token');
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
         }
+        
+        // Add crisp_user cookie to all requests
+        const crispUser = this.getCookie('crisp_user');
+        if (crispUser) {
+          config.headers['X-Crisp-User'] = crispUser;
+        }
+        
         return config;
       },
       (error: any) => Promise.reject(error)
@@ -71,6 +80,17 @@ class ApiService {
         return Promise.reject(error);
       }
     );
+  }
+
+  // Helper method to get cookie value
+  private getCookie(name: string): string | null {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) {
+      const cookieValue = parts.pop()?.split(';').shift();
+      return cookieValue || null;
+    }
+    return null;
   }
 
   get(url: string, params?: any, config?: any) {

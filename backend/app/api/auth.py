@@ -323,6 +323,22 @@ async def change_password(
     
     return {"message": "Password changed successfully"}
 
+@router.get("/debug/cookies")
+async def debug_cookies(request: Request):
+    """Debug endpoint to check cookies and headers without authentication"""
+    crisp_user_cookie = request.cookies.get("crisp_user")
+    crisp_user_header = request.headers.get("x-crisp-user")
+    
+    return {
+        "cookies": dict(request.cookies),
+        "headers": dict(request.headers),
+        "client": str(request.client),
+        "url": str(request.url),
+        "crisp_user_cookie": crisp_user_cookie,
+        "crisp_user_header": crisp_user_header,
+        "crisp_user_final": crisp_user_cookie or crisp_user_header
+    }
+
 @router.get("/login/cookie")
 async def login_with_cookie(
     request: Request,
@@ -331,17 +347,18 @@ async def login_with_cookie(
     """Login using crisp_user cookie for intranet environments"""
     print(f"🔍 Cookie authentication request received from: {request.client.host}")
     print(f"🍪 All cookies: {dict(request.cookies)}")
+    print(f"📋 All headers: {dict(request.headers)}")
     
-    # Get crisp_user cookie
-    crisp_user = request.cookies.get("crisp_user")
+    # Get crisp_user from cookie or header
+    crisp_user = request.cookies.get("crisp_user") or request.headers.get("x-crisp-user")
     
     print(f"🍪 Cookie authentication attempt - crisp_user value: '{crisp_user}'")
     
     if not crisp_user:
-        print("❌ Cookie authentication failed - No crisp_user cookie found")
+        print("❌ Cookie authentication failed - No crisp_user cookie or header found")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="No crisp_user cookie found"
+            detail="No crisp_user cookie or header found"
         )
     
     # Check if user exists
