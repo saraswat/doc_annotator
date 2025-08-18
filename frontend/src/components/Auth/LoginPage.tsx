@@ -55,16 +55,16 @@ const LoginPage: React.FC = () => {
           loginDirect(tokens.user, tokens.accessToken, tokens.refreshToken);
           toast.success(`Welcome ${tokens.user.name}!`);
           navigate('/selector');
-        } catch (error) {
+        } catch (error: any) {
           console.error('Auto-login failed:', error);
           console.error('Auto-login error details:', {
-            message: error?.message,
-            response: error?.response?.data,
-            status: error?.response?.status,
-            statusText: error?.response?.statusText
+            message: (error as any)?.message,
+            response: (error as any)?.response?.data,
+            status: (error as any)?.response?.status,
+            statusText: (error as any)?.response?.statusText
           });
           setIsRedirecting(false);
-          setError(`Auto-login failed: ${error?.response?.data?.detail || error?.message || 'Unknown error'}`);
+          setError(`Auto-login failed: ${(error as any)?.response?.data?.detail || (error as any)?.message || 'Unknown error'}`);
           toast.error('Auto-login failed. Please contact your system administrator.');
         }
       }, 1500); // 1.5 second delay to show the message

@@ -84,13 +84,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setUser(tokens.user);
           console.log(`✅ Frontend: Cookie authentication successful for: ${tokens.user.name}`);
           toast.success(`Welcome ${tokens.user.name}! Redirecting to documents...`);
-        } catch (error) {
+        } catch (error: any) {
           console.error('❌ Frontend: Cookie authentication failed:', error);
           console.error('❌ Error details:', {
-            message: error?.message,
-            response: error?.response?.data,
-            status: error?.response?.status,
-            statusText: error?.response?.statusText
+            message: (error as any)?.message,
+            response: (error as any)?.response?.data,
+            status: (error as any)?.response?.status,
+            statusText: (error as any)?.response?.statusText
           });
         }
       } else {
