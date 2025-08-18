@@ -1,15 +1,42 @@
 from sqlalchemy import Column, String, Integer, Text, DateTime, Boolean, ForeignKey, JSON
-from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
+from sqlalchemy.types import TypeDecorator, String as SQLString
 from datetime import datetime
 import uuid
 
 from app.core.database import Base
 
+class UUID(TypeDecorator):
+    impl = SQLString
+    cache_ok = True
+    
+    def load_dialect_impl(self, dialect):
+        if dialect.name == 'postgresql':
+            from sqlalchemy.dialects.postgresql import UUID as PostgresUUID
+            return dialect.type_descriptor(PostgresUUID(as_uuid=True))
+        else:
+            return dialect.type_descriptor(SQLString(36))
+    
+    def process_bind_param(self, value, dialect):
+        if value is None:
+            return value
+        elif dialect.name == 'postgresql':
+            return value
+        else:
+            return str(value)
+    
+    def process_result_value(self, value, dialect):
+        if value is None:
+            return value
+        elif dialect.name == 'postgresql':
+            return value
+        else:
+            return uuid.UUID(value)
+
 class Annotation(Base):
     __tablename__ = "annotations"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(UUID(), primary_key=True, default=uuid.uuid4)
     document_id = Column(Integer, ForeignKey("documents.id"), nullable=False)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     
@@ -20,8 +47,8 @@ class Annotation(Base):
     body = Column(JSON, nullable=False)
     
     # Threading
-    reply_to = Column(UUID(as_uuid=True), ForeignKey("annotations.id"), nullable=True)
-    thread_id = Column(UUID(as_uuid=True), nullable=True)
+    reply_to = Column(UUID(), ForeignKey("annotations.id"), nullable=True)
+    thread_id = Column(UUID(), nullable=True)
     
     # Status
     resolved = Column(Boolean, default=False)

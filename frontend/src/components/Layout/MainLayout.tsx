@@ -203,17 +203,23 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children, currentDocumentId, on
   return (
     <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
       <Header />
-      <Box sx={{ flex: 1, display: 'flex' }}>
-        {/* Left Sidebar - Key-Date Selector and Controls */}
-      <Box sx={{ 
-        width: 300, 
-        borderRight: 1, 
-        borderColor: 'divider',
-        bgcolor: 'background.paper',
-        display: 'flex',
-        flexDirection: 'column',
-        p: 2
-      }}>
+      <Box sx={{ flex: 1, display: 'flex', position: 'relative' }}>
+        {/* Left Sidebar - Fixed to viewport */}
+        <Box sx={{ 
+          position: 'fixed',
+          top: 64, // Account for header height
+          left: 0,
+          width: 300, 
+          height: 'calc(100vh - 64px)', // Full height minus header
+          borderRight: 1, 
+          borderColor: 'divider',
+          bgcolor: 'background.paper',
+          display: 'flex',
+          flexDirection: 'column',
+          p: 2,
+          zIndex: 1000,
+          overflow: 'auto'
+        }}>
         <Typography variant="h5" gutterBottom>
           Document Browser
         </Typography>
@@ -272,7 +278,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children, currentDocumentId, on
         )}
 
         {/* Document List */}
-        <Box sx={{ flex: 1, overflow: 'auto', mb: 2 }}>
+        <Box sx={{ flex: 1, overflow: 'auto', mb: 2, minHeight: 0 }}>
           {!loading && selectedKey && selectedDate && (
             <>
               <Typography variant="subtitle2" gutterBottom>
@@ -389,7 +395,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children, currentDocumentId, on
       </Box>
 
         {/* Main Content Area */}
-        <Box sx={{ flex: 1, overflow: 'hidden' }}>
+        <Box sx={{ flex: 1, overflow: 'hidden', height: '100%', minHeight: 0, marginLeft: '300px' }}>
           {children}
         </Box>
       </Box>

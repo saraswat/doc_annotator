@@ -5,6 +5,7 @@ import os
 class Settings(BaseSettings):
     # Database
     DATABASE_URL: str = "postgresql+asyncpg://annotation_user:annotation_pass@localhost:5432/annotation_db"
+    DATABASE_TYPE: str = "postgresql"  # postgresql, mysql, or sqlite
     
     # Redis for caching and sessions
     REDIS_URL: str = "redis://localhost:6379"

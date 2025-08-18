@@ -6,38 +6,76 @@ This guide explains how to run the Document Annotation System locally without Do
 
 - **Python 3.11+** with pip
 - **Node.js 18+** with npm
-- **PostgreSQL 14+** 
+- **Database**: PostgreSQL 14+ OR MySQL 8.0+ OR SQLite 3.31+ (built into Python)
 - **Redis** (optional, for real-time features)
 
 ## Quick Start
 
+### Option A: PostgreSQL (Default)
+
 1. **Run the setup script:**
    ```bash
-   ./setup-local.sh
+   ./setup-local.sh postgresql
    ```
 
-2. **Create the PostgreSQL database:**
+2. **Start the backend:**
    ```bash
-   createdb annotation_db
-   # Or if you need to specify user/host:
-   createdb -U annotation_user -h localhost annotation_db
+   ./start-backend.sh 8000 postgresql
    ```
 
-3. **Start the backend** (in one terminal):
+3. **Start the frontend:**
    ```bash
-   ./start-backend.sh          # Default port 8000
-   # Or with custom port:
-   ./start-backend.sh 8080
+   ./start-frontend.sh 3000 8000
    ```
 
-4. **Start the frontend** (in another terminal):
+### Option B: MySQL
+
+1. **Run the setup script:**
    ```bash
-   ./start-frontend.sh         # Default ports: frontend=3000, backend=8000
-   # Or with custom ports:
-   ./start-frontend.sh 3001 8080  # frontend on 3001, backend on 8080
+   ./setup-local.sh mysql
    ```
 
-5. **Open your browser** to http://localhost:3000 (or your custom frontend port)
+2. **Start the backend:**
+   ```bash
+   ./start-backend.sh 8000 mysql
+   ```
+
+3. **Start the frontend:**
+   ```bash
+   ./start-frontend.sh 3000 8000
+   ```
+
+### Option C: SQLite (No Installation Required)
+
+1. **Run the setup script:**
+   ```bash
+   ./setup-local.sh sqlite
+   ```
+
+2. **Start the backend:**
+   ```bash
+   ./start-backend.sh 8000 sqlite
+   ```
+
+3. **Start the frontend:**
+   ```bash
+   ./start-frontend.sh 3000 8000
+   ```
+
+### Custom Ports
+
+```bash
+# Backend on port 8080, MySQL database
+./start-backend.sh 8080 mysql
+
+# Backend on port 8080, SQLite database
+./start-backend.sh 8080 sqlite
+
+# Frontend on port 3001, connecting to backend on 8080
+./start-frontend.sh 3001 8080
+```
+
+**Open your browser** to http://localhost:3000 (or your custom frontend port)
 
 ## Default Admin Access
 
@@ -109,7 +147,28 @@ REACT_APP_WS_URL=ws://localhost:8000
 
 ## Database Setup
 
-### PostgreSQL Installation
+You can use PostgreSQL, MySQL, or SQLite as your database. Choose one of the options below.
+
+### SQLite Installation (Easiest - No Setup Required)
+
+SQLite is built into Python and requires no additional installation or configuration. The database file will be automatically created at `./data/annotation.db`.
+
+**Advantages:**
+- Zero configuration required
+- Perfect for development and testing
+- Database file is portable
+- No server process to manage
+
+**Usage:**
+```bash
+# Setup with SQLite
+./setup-local.sh sqlite
+./start-backend.sh 8000 sqlite
+```
+
+The database file will be created automatically in the `data/` directory.
+
+### PostgreSQL Installation (Default)
 
 #### macOS
 
@@ -307,8 +366,10 @@ source ~/.bash_profile
 
 ### Common Issues
 
+#### PostgreSQL Issues
+
 **Connection refused:**
-- Make sure PostgreSQL service is running
+- Make sure PostgreSQL service is running: `sudo systemctl status postgresql`
 - Check if PostgreSQL is listening on port 5432: `netstat -an | grep 5432`
 
 **Authentication failed:**
@@ -319,20 +380,363 @@ source ~/.bash_profile
 - Create it: `createdb -U annotation_user annotation_db`
 - Or via SQL: `CREATE DATABASE annotation_db;`
 
-**Permission denied:**
-- Make sure the user has privileges: `GRANT ALL PRIVILEGES ON DATABASE annotation_db TO annotation_user;`
+**Permission denied for schema public:**
+- Grant schema permissions: `GRANT ALL ON SCHEMA public TO annotation_user;`
+
+#### MySQL Issues
+
+**Connection refused:**
+- Make sure MySQL service is running: `sudo systemctl status mysql` or `sudo systemctl status mysqld`
+- Check if MySQL is listening on port 3306: `netstat -an | grep 3306`
+
+**Access denied for user:**
+- Verify username/password are correct
+- Make sure user exists: `SELECT User, Host FROM mysql.user WHERE User='annotation_user';`
+- Grant privileges: `GRANT ALL PRIVILEGES ON annotation_db.* TO 'annotation_user'@'localhost';`
+
+**Database does not exist:**
+- Create it: `mysql -u root -p -e "CREATE DATABASE annotation_db;"`
+
+**MySQL service failed to start:**
+- Check logs: `sudo journalctl -u mysql` or `sudo journalctl -u mysqld`
+- On some systems, initialize first: `sudo mysqld --initialize`
+
+**Can't connect to MySQL server:**
+- Check if MySQL socket exists: `ls -la /var/run/mysqld/mysqld.sock`
+- Try connecting via TCP: `mysql -h 127.0.0.1 -P 3306 -u annotation_user -p`
+
+#### General Issues
 
 **PATH not working after installation:**
 - Check which shell you're using: `echo $SHELL`
 - Reload your shell config or open a new terminal
-- Verify PostgreSQL is in PATH: `which psql`
+- Verify database tools are in PATH: `which psql` or `which mysql`
+
+**Python dependencies fail to install:**
+- For MySQL: Make sure you have build tools: `sudo apt install build-essential libmysqlclient-dev`
+- For PostgreSQL: Make sure you have: `sudo apt install libpq-dev`
+
+### MySQL Installation (Alternative)
+
+#### macOS
+
+**Option 1: Homebrew (Recommended)**
+```bash
+# Install MySQL
+brew install mysql
+brew services start mysql
+
+# Secure installation (optional but recommended)
+mysql_secure_installation
+
+# Add MySQL to PATH (works for both bash and zsh)
+if [[ "$SHELL" == *"zsh"* ]]; then
+    echo 'export PATH="/opt/homebrew/bin:$PATH"' >> ~/.zshrc
+    source ~/.zshrc
+elif [[ "$SHELL" == *"bash"* ]]; then
+    echo 'export PATH="/opt/homebrew/bin:$PATH"' >> ~/.bash_profile
+    source ~/.bash_profile
+fi
+
+# Create database and user
+mysql -u root -p -e "CREATE DATABASE annotation_db;"
+mysql -u root -p -e "CREATE USER 'annotation_user'@'localhost' IDENTIFIED BY 'annotation_pass';"
+mysql -u root -p -e "GRANT ALL PRIVILEGES ON annotation_db.* TO 'annotation_user'@'localhost';"
+mysql -u root -p -e "FLUSH PRIVILEGES;"
+```
+
+**Option 2: Official Installer**
+```bash
+# Download MySQL installer from https://dev.mysql.com/downloads/mysql/
+# Follow installation instructions
+# Add to PATH if needed
+# Use MySQL Workbench or command line to create database
+```
+
+#### Linux
+
+**Ubuntu 22.04/20.04 LTS (x86_64/ARM64):**
+```bash
+# Update package list
+sudo apt update
+
+# Install MySQL Server and Client
+sudo apt install mysql-server mysql-client
+
+# Start MySQL service
+sudo systemctl start mysql
+sudo systemctl enable mysql
+
+# Check MySQL is running
+sudo systemctl status mysql
+
+# Secure installation (recommended)
+sudo mysql_secure_installation
+
+# Create database and user
+sudo mysql -e "CREATE DATABASE annotation_db;"
+sudo mysql -e "CREATE USER 'annotation_user'@'localhost' IDENTIFIED BY 'annotation_pass';"
+sudo mysql -e "GRANT ALL PRIVILEGES ON annotation_db.* TO 'annotation_user'@'localhost';"
+sudo mysql -e "FLUSH PRIVILEGES;"
+
+# Test connection
+mysql -h localhost -u annotation_user -p annotation_db -e "SELECT version();"
+```
+
+**Ubuntu 18.04 (x86_64):**
+```bash
+# For older Ubuntu versions, you may need to add MySQL APT repository
+wget https://dev.mysql.com/get/mysql-apt-config_0.8.29-1_all.deb
+sudo dpkg -i mysql-apt-config_0.8.29-1_all.deb
+sudo apt update
+
+# Install MySQL
+sudo apt install mysql-server mysql-client
+
+# Continue with standard setup...
+sudo systemctl start mysql
+sudo systemctl enable mysql
+sudo mysql_secure_installation
+
+# Create database and user
+sudo mysql -e "CREATE DATABASE annotation_db;"
+sudo mysql -e "CREATE USER 'annotation_user'@'localhost' IDENTIFIED BY 'annotation_pass';"
+sudo mysql -e "GRANT ALL PRIVILEGES ON annotation_db.* TO 'annotation_user'@'localhost';"
+sudo mysql -e "FLUSH PRIVILEGES;"
+```
+
+**Debian 12/11 (x86_64/ARM64):**
+```bash
+# Update package list
+sudo apt update
+
+# Install MySQL
+sudo apt install default-mysql-server default-mysql-client
+# OR for latest MySQL 8.0:
+sudo apt install mysql-server mysql-client
+
+# Start and enable service
+sudo systemctl start mysql
+sudo systemctl enable mysql
+
+# Secure installation
+sudo mysql_secure_installation
+
+# Create database and user
+sudo mysql -e "CREATE DATABASE annotation_db;"
+sudo mysql -e "CREATE USER 'annotation_user'@'localhost' IDENTIFIED BY 'annotation_pass';"
+sudo mysql -e "GRANT ALL PRIVILEGES ON annotation_db.* TO 'annotation_user'@'localhost';"
+sudo mysql -e "FLUSH PRIVILEGES;"
+```
+
+**CentOS Stream 9/RHEL 9 (x86_64/ARM64):**
+```bash
+# Enable MySQL module and install
+sudo dnf module reset mysql
+sudo dnf module enable mysql:8.0
+sudo dnf install mysql-server mysql
+
+# Start and enable service
+sudo systemctl start mysqld
+sudo systemctl enable mysqld
+
+# Get temporary root password
+sudo grep 'temporary password' /var/log/mysqld.log
+
+# Secure installation
+sudo mysql_secure_installation
+
+# Create database and user
+mysql -u root -p -e "CREATE DATABASE annotation_db;"
+mysql -u root -p -e "CREATE USER 'annotation_user'@'localhost' IDENTIFIED BY 'annotation_pass';"
+mysql -u root -p -e "GRANT ALL PRIVILEGES ON annotation_db.* TO 'annotation_user'@'localhost';"
+mysql -u root -p -e "FLUSH PRIVILEGES;"
+```
+
+**Fedora 38/39 (x86_64/ARM64):**
+```bash
+# Install MySQL Community Server
+sudo dnf install mysql-server mysql
+
+# Start and enable service
+sudo systemctl start mysqld
+sudo systemctl enable mysqld
+
+# Secure installation
+sudo mysql_secure_installation
+
+# Create database and user
+mysql -u root -p -e "CREATE DATABASE annotation_db;"
+mysql -u root -p -e "CREATE USER 'annotation_user'@'localhost' IDENTIFIED BY 'annotation_pass';"
+mysql -u root -p -e "GRANT ALL PRIVILEGES ON annotation_db.* TO 'annotation_user'@'localhost';"
+mysql -u root -p -e "FLUSH PRIVILEGES;"
+```
+
+**CentOS 7 (x86_64) - Legacy:**
+```bash
+# Add MySQL Yum repository
+wget https://dev.mysql.com/get/mysql80-community-release-el7-7.noarch.rpm
+sudo rpm -Uvh mysql80-community-release-el7-7.noarch.rpm
+
+# Install MySQL
+sudo yum install mysql-server mysql
+
+# Start and enable service
+sudo systemctl start mysqld
+sudo systemctl enable mysqld
+
+# Get temporary root password
+sudo grep 'temporary password' /var/log/mysqld.log
+
+# Secure installation
+sudo mysql_secure_installation
+
+# Create database and user
+mysql -u root -p -e "CREATE DATABASE annotation_db;"
+mysql -u root -p -e "CREATE USER 'annotation_user'@'localhost' IDENTIFIED BY 'annotation_pass';"
+mysql -u root -p -e "GRANT ALL PRIVILEGES ON annotation_db.* TO 'annotation_user'@'localhost';"
+mysql -u root -p -e "FLUSH PRIVILEGES;"
+```
+
+**Arch Linux (x86_64/ARM64):**
+```bash
+# Install MySQL
+sudo pacman -S mysql
+
+# Initialize MySQL data directory
+sudo mysqld --initialize --user=mysql --datadir=/var/lib/mysql
+
+# Start and enable service
+sudo systemctl start mysqld
+sudo systemctl enable mysqld
+
+# Get initial root password
+sudo cat /var/lib/mysql/[hostname].err | grep 'temporary password'
+
+# Secure installation
+sudo mysql_secure_installation
+
+# Create database and user
+mysql -u root -p -e "CREATE DATABASE annotation_db;"
+mysql -u root -p -e "CREATE USER 'annotation_user'@'localhost' IDENTIFIED BY 'annotation_pass';"
+mysql -u root -p -e "GRANT ALL PRIVILEGES ON annotation_db.* TO 'annotation_user'@'localhost';"
+mysql -u root -p -e "FLUSH PRIVILEGES;"
+```
+
+**OpenSUSE Leap/Tumbleweed (x86_64/ARM64):**
+```bash
+# Install MySQL
+sudo zypper install mysql mysql-client
+
+# Start and enable service
+sudo systemctl start mysql
+sudo systemctl enable mysql
+
+# Secure installation
+sudo mysql_secure_installation
+
+# Create database and user
+mysql -u root -p -e "CREATE DATABASE annotation_db;"
+mysql -u root -p -e "CREATE USER 'annotation_user'@'localhost' IDENTIFIED BY 'annotation_pass';"
+mysql -u root -p -e "GRANT ALL PRIVILEGES ON annotation_db.* TO 'annotation_user'@'localhost';"
+mysql -u root -p -e "FLUSH PRIVILEGES;"
+```
+
+**Alternative: MySQL via Docker (Any Linux x86_64/ARM64):**
+```bash
+# Run MySQL in Docker container
+docker run --name mysql-annotation \
+  -e MYSQL_ROOT_PASSWORD=rootpass \
+  -e MYSQL_DATABASE=annotation_db \
+  -e MYSQL_USER=annotation_user \
+  -e MYSQL_PASSWORD=annotation_pass \
+  -p 3306:3306 \
+  -d mysql:8.0
+
+# Verify container is running
+docker ps | grep mysql-annotation
+
+# Test connection
+mysql -h 127.0.0.1 -P 3306 -u annotation_user -p annotation_db -e "SELECT version();"
+```
+
+#### Windows
+
+**Option 1: Official Installer (x86_64)**
+```bash
+# 1. Download MySQL installer from https://dev.mysql.com/downloads/installer/
+# 2. Run installer and select "Server only" or "Full" installation
+# 3. Configure root password during installation
+# 4. Add MySQL to PATH (usually C:\Program Files\MySQL\MySQL Server 8.0\bin)
+# 5. Open Command Prompt or PowerShell:
+
+# Create database and user
+mysql -u root -p -e "CREATE DATABASE annotation_db;"
+mysql -u root -p -e "CREATE USER 'annotation_user'@'localhost' IDENTIFIED BY 'annotation_pass';"
+mysql -u root -p -e "GRANT ALL PRIVILEGES ON annotation_db.* TO 'annotation_user'@'localhost';"
+mysql -u root -p -e "FLUSH PRIVILEGES;"
+```
+
+### Verifying Database Installation
+
+**PostgreSQL:**
+```bash
+# Check PostgreSQL is running
+pg_isready -h localhost -p 5432
+
+# Test connection
+psql -h localhost -U annotation_user -d annotation_db -c "SELECT version();"
+```
+
+**MySQL:**
+```bash
+# Check MySQL is running
+mysqladmin -u annotation_user -p ping
+
+# Test connection
+mysql -h localhost -u annotation_user -p annotation_db -e "SELECT version();"
+```
+
+### Database Selection
+
+**Setup with PostgreSQL (default):**
+```bash
+./setup-local.sh postgresql
+./start-backend.sh 8000 postgresql
+```
+
+**Setup with MySQL:**
+```bash
+./setup-local.sh mysql
+./start-backend.sh 8000 mysql
+```
+
+**Setup with SQLite:**
+```bash
+./setup-local.sh sqlite
+./start-backend.sh 8000 sqlite
+```
 
 ### Custom Database Configuration
 
-If you have different PostgreSQL credentials, update the DATABASE_URL in `backend/.env`:
+If you have different database credentials, update the DATABASE_URL in `backend/.env`:
 
+**For PostgreSQL:**
 ```bash
 DATABASE_URL=postgresql+asyncpg://YOUR_USER:YOUR_PASSWORD@localhost:5432/YOUR_DATABASE
+DATABASE_TYPE=postgresql
+```
+
+**For MySQL:**
+```bash
+DATABASE_URL=mysql+aiomysql://YOUR_USER:YOUR_PASSWORD@localhost:3306/YOUR_DATABASE
+DATABASE_TYPE=mysql
+```
+
+**For SQLite:**
+```bash
+DATABASE_URL=sqlite+aiosqlite:///./data/YOUR_DATABASE.db
+DATABASE_TYPE=sqlite
 ```
 
 ## Troubleshooting
@@ -340,9 +744,11 @@ DATABASE_URL=postgresql+asyncpg://YOUR_USER:YOUR_PASSWORD@localhost:5432/YOUR_DA
 ### Backend Issues
 
 **Database connection error:**
-- Make sure PostgreSQL is running: `brew services start postgresql` (macOS)
-- Check if database exists: `psql -l | grep annotation_db`
-- Create database: `createdb annotation_db`
+- **PostgreSQL:** Make sure PostgreSQL is running: `brew services start postgresql` (macOS)
+- **PostgreSQL:** Check if database exists: `psql -l | grep annotation_db`
+- **PostgreSQL:** Create database: `createdb annotation_db`
+- **MySQL:** Make sure MySQL is running: `brew services start mysql` (macOS)
+- **SQLite:** Check if `data/` directory exists and is writable
 
 **Import errors:**
 - Make sure virtual environment is activated: `source backend/venv/bin/activate`
@@ -390,9 +796,14 @@ To enable Google OAuth:
 ## Production Considerations
 
 For production deployment:
-- Use a managed PostgreSQL service
+- Use a managed PostgreSQL or MySQL service (SQLite not recommended for production)
 - Set proper SECRET_KEY (not the generated one)
 - Configure proper CORS origins
 - Use environment-specific .env files
 - Set up Redis for real-time features
 - Configure proper logging
+
+**Database Recommendations by Use Case:**
+- **Development/Testing:** SQLite (zero setup)
+- **Small Production:** PostgreSQL or MySQL
+- **Large Production:** PostgreSQL with proper scaling

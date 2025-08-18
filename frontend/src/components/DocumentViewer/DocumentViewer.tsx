@@ -551,11 +551,11 @@ const DocumentViewer: React.FC = () => {
   }
 
   return (
-    <Box sx={{ height: '100%', display: 'flex' }}>
+    <Box sx={{ height: '100%', display: 'flex', position: 'relative' }}>
       {/* Document content */}
-      <Box sx={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
-        <Container maxWidth="lg" sx={{ py: 2, flex: 1, display: 'flex', flexDirection: 'column' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+      <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, paddingRight: '320px' }}>
+        <Container maxWidth="lg" sx={{ py: 2, flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2, flexShrink: 0 }}>
             <Typography variant="h4" gutterBottom>
               {document.title}
             </Typography>
@@ -563,7 +563,7 @@ const DocumentViewer: React.FC = () => {
           
           <Paper 
             elevation={1} 
-            sx={{ p: 3, bgcolor: 'white', flex: 1, overflow: 'auto' }}
+            sx={{ p: 3, bgcolor: 'white', flex: 1, overflow: 'auto', minHeight: 0 }}
             className="document-content"
           >
             {document.document_type?.toLowerCase() === 'pdf' ? (
@@ -595,13 +595,18 @@ const DocumentViewer: React.FC = () => {
         </Container>
       </Box>
       
-      {/* Annotation sidebar */}
+      {/* Annotation sidebar - Fixed to viewport */}
       <Box sx={{ 
+        position: 'fixed',
+        top: 64, // Account for header height
+        right: 0,
         width: 320, 
+        height: 'calc(100vh - 64px)', // Full height minus header
         borderLeft: 1, 
         borderColor: 'divider',
         bgcolor: 'background.paper',
-        overflow: 'auto'
+        overflow: 'auto',
+        zIndex: 1000
       }}>
         <Box sx={{ p: 2 }}>
           <Typography variant="h6" gutterBottom>

@@ -2,10 +2,16 @@
 
 # Document Annotation System - Local Development Setup Script
 # This script sets up the system to run locally without Docker
+# Usage: ./setup-local.sh [DATABASE_TYPE]
+# DATABASE_TYPE: postgresql (default), mysql, or sqlite
 
 set -e
 
+# Parse command line arguments
+DATABASE_TYPE="${1:-postgresql}"
+
 echo "🔧 Setting up Document Annotation System for local development..."
+echo "🗄️ Database type: $DATABASE_TYPE"
 
 # Check if we're in the right directory
 if [ ! -f "backend/main.py" ] || [ ! -f "frontend/package.json" ]; then
@@ -46,36 +52,74 @@ fi
 
 echo "✅ Prerequisites check completed"
 
-# Set up PostgreSQL database and user
-echo "🗄️ Setting up PostgreSQL database..."
-
-# Check if PostgreSQL is accessible
-if command -v psql &> /dev/null; then
-    # Try to create user and database
-    echo "Creating PostgreSQL user and database..."
+# Set up database based on type
+if [ "$DATABASE_TYPE" = "sqlite" ]; then
+    echo "🗄️ Setting up SQLite database..."
     
-    # Create user (ignore error if already exists)
-    psql -U postgres -c "CREATE USER annotation_user WITH PASSWORD 'annotation_pass';" 2>/dev/null || echo "User annotation_user may already exist"
+    # Create data directory for SQLite database
+    mkdir -p data
     
-    # Create database (ignore error if already exists)  
-    psql -U postgres -c "CREATE DATABASE annotation_db OWNER annotation_user;" 2>/dev/null || echo "Database annotation_db may already exist"
+    # SQLite requires no additional setup - database file will be created automatically
+    echo "✅ SQLite setup completed - database will be created automatically"
     
-    # Grant privileges
-    psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE annotation_db TO annotation_user;" 2>/dev/null || true
+    DATABASE_URL="sqlite+aiosqlite:///./data/annotation.db"
+elif [ "$DATABASE_TYPE" = "mysql" ]; then
+    echo "🗄️ Setting up MySQL database..."
     
-    echo "✅ PostgreSQL setup completed"
+    # Check if MySQL is accessible
+    if command -v mysql &> /dev/null; then
+        echo "Creating MySQL user and database..."
+        
+        # Create database and user (ignore errors if already exist)
+        mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS annotation_db;" 2>/dev/null || echo "Database annotation_db may already exist"
+        mysql -u root -p -e "CREATE USER IF NOT EXISTS 'annotation_user'@'localhost' IDENTIFIED BY 'annotation_pass';" 2>/dev/null || echo "User annotation_user may already exist"
+        mysql -u root -p -e "GRANT ALL PRIVILEGES ON annotation_db.* TO 'annotation_user'@'localhost';" 2>/dev/null || true
+        mysql -u root -p -e "FLUSH PRIVILEGES;" 2>/dev/null || true
+        
+        echo "✅ MySQL setup completed"
+    else
+        echo "⚠️ Warning: mysql not found in PATH"
+        echo "   Please create the database manually:"
+        echo "   mysql -u root -p -e \"CREATE DATABASE annotation_db;\""
+        echo "   mysql -u root -p -e \"CREATE USER 'annotation_user'@'localhost' IDENTIFIED BY 'annotation_pass';\""
+        echo "   mysql -u root -p -e \"GRANT ALL PRIVILEGES ON annotation_db.* TO 'annotation_user'@'localhost';\""
+    fi
+    
+    DATABASE_URL="mysql+aiomysql://annotation_user:annotation_pass@localhost:3306/annotation_db"
 else
-    echo "⚠️ Warning: psql not found in PATH"
-    echo "   Please create the database manually:"
-    echo "   createuser annotation_user"
-    echo "   createdb -O annotation_user annotation_db"
+    echo "🗄️ Setting up PostgreSQL database..."
+    
+    # Check if PostgreSQL is accessible
+    if command -v psql &> /dev/null; then
+        echo "Creating PostgreSQL user and database..."
+        
+        # Create user (ignore error if already exists)
+        psql -d postgres -c "CREATE USER annotation_user WITH PASSWORD 'annotation_pass';" 2>/dev/null || echo "User annotation_user may already exist"
+        
+        # Create database (ignore error if already exists)  
+        psql -d postgres -c "CREATE DATABASE annotation_db OWNER annotation_user;" 2>/dev/null || echo "Database annotation_db may already exist"
+        
+        # Grant privileges
+        psql -d postgres -c "GRANT ALL PRIVILEGES ON DATABASE annotation_db TO annotation_user;" 2>/dev/null || true
+        psql -d annotation_db -c "GRANT ALL ON SCHEMA public TO annotation_user;" 2>/dev/null || true
+        
+        echo "✅ PostgreSQL setup completed"
+    else
+        echo "⚠️ Warning: psql not found in PATH"
+        echo "   Please create the database manually:"
+        echo "   createuser annotation_user"
+        echo "   createdb -O annotation_user annotation_db"
+    fi
+    
+    DATABASE_URL="postgresql+asyncpg://annotation_user:annotation_pass@localhost:5432/annotation_db"
 fi
 
 # Create .env file for backend
 echo "📝 Creating backend environment configuration..."
 cat > backend/.env << EOF
 # Database Configuration
-DATABASE_URL=postgresql+asyncpg://annotation_user:annotation_pass@localhost:5432/annotation_db
+DATABASE_URL=$DATABASE_URL
+DATABASE_TYPE=$DATABASE_TYPE
 
 # Security
 SECRET_KEY=$(python3 -c 'import secrets; print(secrets.token_hex(32))')
@@ -144,15 +188,24 @@ echo ""
 echo "✅ Local development setup completed!"
 echo ""
 echo "📋 Next steps:"
-echo "   1. Make sure PostgreSQL is running with a database named 'annotation_db'"
-echo "      Create it with: createdb annotation_db"
-echo "   2. Start the backend: ./start-backend.sh [PORT]"
+if [ "$DATABASE_TYPE" = "sqlite" ]; then
+    echo "   1. SQLite database will be created automatically in ./data/annotation.db"
+elif [ "$DATABASE_TYPE" = "mysql" ]; then
+    echo "   1. Make sure MySQL is running with a database named 'annotation_db'"
+    echo "      If not created automatically, run the manual commands shown above"
+else
+    echo "   1. Make sure PostgreSQL is running with a database named 'annotation_db'"
+    echo "      If not created automatically, run: createdb annotation_db"
+fi
+echo "   2. Start the backend: ./start-backend.sh [PORT] [DATABASE_TYPE]"
 echo "   3. In another terminal, start the frontend: ./start-frontend.sh [FRONTEND_PORT] [BACKEND_PORT]"
 echo "   4. Open http://localhost:3000 in your browser (or your custom port)"
 echo ""
-echo "🔧 Custom port examples:"
-echo "   ./start-backend.sh 8080"
-echo "   ./start-frontend.sh 3001 8080"
+echo "🔧 Examples:"
+echo "   PostgreSQL: ./start-backend.sh 8000 postgresql"
+echo "   MySQL:      ./start-backend.sh 8000 mysql"
+echo "   SQLite:     ./start-backend.sh 8000 sqlite"
+echo "   Custom:     ./start-frontend.sh 3001 8080"
 echo ""
 echo "🔑 Default admin credentials:"
 echo "   Email: admin@test.com"
