@@ -25,10 +25,16 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# CORS configuration
+# CORS configuration - use environment variable if set
+cors_origins = settings.CORS_ORIGINS
+cors_env = os.getenv("CORS_ORIGINS")
+if cors_env:
+    cors_origins = settings.parse_cors_origins(cors_env)
+    print(f"🌐 Using CORS origins from environment: {cors_origins}")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

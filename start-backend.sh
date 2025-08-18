@@ -58,7 +58,7 @@ fi
 export SECRET_KEY="${SECRET_KEY:-$(python -c 'import secrets; print(secrets.token_hex(32))')}"
 export ADMIN_USER_EMAIL="${ADMIN_USER_EMAIL:-admin@test.com}"
 export ADMIN_INITIAL_PASSWORD="${ADMIN_INITIAL_PASSWORD:-temppass123}"
-export CORS_ORIGINS='["https://localhost:3000"]'
+export CORS_ORIGINS='["https://localhost:3000","https://foo.com:40000"]'
 export OAUTH_CLIENT_ID="${OAUTH_CLIENT_ID:-}"
 export OAUTH_CLIENT_SECRET="${OAUTH_CLIENT_SECRET:-}"
 export OAUTH_PROVIDER="${OAUTH_PROVIDER:-google}"
@@ -177,7 +177,7 @@ echo "🔴 Press Ctrl+C to stop the server"
 echo ""
 
 # Update CORS origins to include frontend with any port
-export CORS_ORIGINS='["https://localhost:3000", "https://localhost:3001", "https://localhost:8080"]'
+export CORS_ORIGINS='["https://localhost:3000", "https://localhost:3001", "https://localhost:8080", "https://foo.com:40000"]'
 
 # SSL certificates for HTTPS
 SSL_KEYFILE="${SSL_KEYFILE:-./ssl/key.pem}"

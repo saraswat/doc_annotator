@@ -137,7 +137,7 @@ OAUTH_CLIENT_SECRET=
 OAUTH_REDIRECT_URI=https://localhost:3000/auth/callback
 
 # CORS
-CORS_ORIGINS=["https://localhost:3000"]
+CORS_ORIGINS=["https://localhost:3000","https://foo.com:40000"]
 
 # Redis (optional)
 REDIS_URL=redis://localhost:6379
