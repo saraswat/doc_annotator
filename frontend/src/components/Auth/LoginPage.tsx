@@ -23,6 +23,8 @@ const LoginPage: React.FC = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [hasCrispCookie, setHasCrispCookie] = useState(false);
+  const [crispUserName, setCrispUserName] = useState<string>('');
+  const [isRedirecting, setIsRedirecting] = useState(false);
   const { loginDirect } = useAuth();
   const navigate = useNavigate();
 
@@ -41,8 +43,26 @@ const LoginPage: React.FC = () => {
     const crispUser = getCookie('crisp_user');
     if (crispUser) {
       setHasCrispCookie(true);
+      setCrispUserName(crispUser);
+      
+      // Start automatic authentication and redirect
+      setIsRedirecting(true);
+      
+      // Add a small delay to show the user identity message
+      setTimeout(async () => {
+        try {
+          const tokens = await authService.loginWithCookie();
+          loginDirect(tokens.user, tokens.accessToken, tokens.refreshToken);
+          toast.success(`Welcome ${tokens.user.name}!`);
+          navigate('/selector');
+        } catch (error) {
+          console.error('Auto-login failed:', error);
+          setIsRedirecting(false);
+          toast.error('Auto-login failed. Please contact your system administrator.');
+        }
+      }, 1500); // 1.5 second delay to show the message
     }
-  }, []);
+  }, [loginDirect, navigate]);
 
   const handleOAuthLogin = async () => {
     try {
@@ -130,13 +150,36 @@ const LoginPage: React.FC = () => {
         )}
 
         {hasCrispCookie && (
-          <Alert severity="info" sx={{ mb: 3 }}>
-            Intranet authentication detected. You should be automatically logged in.
-            If login fails, please contact your system administrator.
+          <Alert severity={isRedirecting ? "success" : "info"} sx={{ mb: 3 }}>
+            {isRedirecting ? (
+              <>
+                <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                  Welcome {crispUserName}!
+                </Typography>
+                <Typography variant="body2">
+                  Authenticating and redirecting to documents...
+                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+                  <CircularProgress size={16} sx={{ mr: 1 }} />
+                  <Typography variant="caption">
+                    Please wait...
+                  </Typography>
+                </Box>
+              </>
+            ) : (
+              <>
+                <Typography variant="body2">
+                  Intranet user detected: <strong>{crispUserName}</strong>
+                </Typography>
+                <Typography variant="body2">
+                  You should be automatically logged in. If login fails, please contact your system administrator.
+                </Typography>
+              </>
+            )}
           </Alert>
         )}
 
-        {loginMode === 'oauth' ? (
+        {!isRedirecting && loginMode === 'oauth' ? (
           <Box>
             <Button
               variant="contained"
@@ -178,7 +221,7 @@ const LoginPage: React.FC = () => {
               </Button>
             </Box>
           </Box>
-        ) : (
+        ) : !isRedirecting ? (
           <Box>
             <TextField
               fullWidth
@@ -250,7 +293,7 @@ const LoginPage: React.FC = () => {
               </Button>
             </Box>
           </Box>
-        )}
+        ) : null}
 
         <Typography variant="caption" display="block" sx={{ mt: 3, opacity: 0.7 }}>
           By signing in, you agree to our terms of service and privacy policy.

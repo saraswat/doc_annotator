@@ -332,7 +332,10 @@ async def login_with_cookie(
     # Get crisp_user cookie
     crisp_user = request.cookies.get("crisp_user")
     
+    print(f"🍪 Cookie authentication attempt - crisp_user value: '{crisp_user}'")
+    
     if not crisp_user:
+        print("❌ Cookie authentication failed - No crisp_user cookie found")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="No crisp_user cookie found"
@@ -346,9 +349,12 @@ async def login_with_cookie(
     
     if not user:
         # Create new user automatically for intranet authentication
+        user_name = crisp_user.split('@')[0] if '@' in crisp_user else crisp_user
+        print(f"👤 Creating new user for crisp_user: {crisp_user} (name: {user_name})")
+        
         user = User(
             email=crisp_user,
-            name=crisp_user.split('@')[0] if '@' in crisp_user else crisp_user,
+            name=user_name,
             oauth_provider="intranet",
             oauth_id=crisp_user,
             is_active=True,
@@ -357,6 +363,9 @@ async def login_with_cookie(
         db.add(user)
         await db.commit()
         await db.refresh(user)
+        print(f"✅ User created successfully - ID: {user.id}, Name: {user.name}")
+    else:
+        print(f"🔍 Found existing user - ID: {user.id}, Name: {user.name}, Email: {user.email}")
     
     if not user.is_active:
         raise HTTPException(
@@ -372,6 +381,8 @@ async def login_with_cookie(
     user.last_login = datetime.utcnow()
     await db.commit()
     await db.refresh(user)
+    
+    print(f"🎉 Cookie authentication successful for user: {user.name} ({user.email})")
     
     return {
         "access_token": access_token,

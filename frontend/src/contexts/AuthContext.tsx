@@ -73,16 +73,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     const tryCookieAuth = async () => {
       const crispUser = getCookie('crisp_user');
+      console.log(`🍪 Frontend: Checking for crisp_user cookie: '${crispUser}'`);
+      
       if (crispUser) {
         try {
+          console.log(`🚀 Frontend: Attempting cookie authentication for user: ${crispUser}`);
           const tokens = await authService.loginWithCookie();
           localStorage.setItem('access_token', tokens.accessToken);
           localStorage.setItem('refresh_token', tokens.refreshToken);
           setUser(tokens.user);
-          toast.success(`Welcome ${tokens.user.name}!`);
+          console.log(`✅ Frontend: Cookie authentication successful for: ${tokens.user.name}`);
+          toast.success(`Welcome ${tokens.user.name}! Redirecting to documents...`);
         } catch (error) {
-          console.error('Cookie authentication failed:', error);
+          console.error('❌ Frontend: Cookie authentication failed:', error);
         }
+      } else {
+        console.log('ℹ️ Frontend: No crisp_user cookie found');
       }
     };
 
