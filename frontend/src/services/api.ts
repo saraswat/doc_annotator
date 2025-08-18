@@ -3,6 +3,11 @@ import toast from 'react-hot-toast';
 
 const API_URL = (process.env as any).REACT_APP_API_URL || 'https://localhost:8000/api';
 
+// Debug logging for troubleshooting
+console.log('🔧 Environment REACT_APP_API_URL:', (process.env as any).REACT_APP_API_URL);
+console.log('🔧 Final API_URL being used:', API_URL);
+console.log('🔧 All environment variables:', process.env);
+
 
 class ApiService {
   private api: AxiosInstance;

@@ -33,27 +33,31 @@ fi
 
 # Set environment variables
 echo "⚙️ Setting environment variables..."
-export REACT_APP_API_URL="https://localhost:$BACKEND_PORT/api"
-export REACT_APP_WS_URL="wss://localhost:$BACKEND_PORT"
+
+# Allow override of backend host for multi-host deployments
+BACKEND_HOST="${BACKEND_HOST:-localhost}"
+export REACT_APP_API_URL="https://$BACKEND_HOST:$BACKEND_PORT/api"
+export REACT_APP_WS_URL="wss://$BACKEND_HOST:$BACKEND_PORT"
 export PORT="$FRONTEND_PORT"
 export HOST="0.0.0.0"
 
 echo "🗄️ Environment Configuration:"
 echo "  Frontend Port: $FRONTEND_PORT"
 echo "  Frontend Host: $HOST"
+echo "  Backend Host: $BACKEND_HOST"
 echo "  Backend Port: $BACKEND_PORT"
 echo "  REACT_APP_API_URL: $REACT_APP_API_URL"
 echo "  REACT_APP_WS_URL: $REACT_APP_WS_URL"
 
 # Check if backend is running (try HTTPS first, then HTTP)
 echo "🔍 Checking backend connection..."
-if curl -k -s "https://localhost:$BACKEND_PORT/health" > /dev/null; then
+if curl -k -s "https://$BACKEND_HOST:$BACKEND_PORT/health" > /dev/null; then
     echo "✅ Backend is running and accessible via HTTPS"
-elif curl -s "http://localhost:$BACKEND_PORT/health" > /dev/null; then
+elif curl -s "http://$BACKEND_HOST:$BACKEND_PORT/health" > /dev/null; then
     echo "✅ Backend is running via HTTP"
     echo "⚠️ Consider generating SSL certificates for HTTPS: ./generate-ssl-certs.sh"
 else
-    echo "⚠️ Warning: Backend may not be running on localhost:$BACKEND_PORT"
+    echo "⚠️ Warning: Backend may not be running on $BACKEND_HOST:$BACKEND_PORT"
     echo "💡 Make sure to start the backend first with ./start-backend.sh $BACKEND_PORT"
 fi
 
