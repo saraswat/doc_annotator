@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Box, 
   Button, 
@@ -22,8 +22,27 @@ const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [hasCrispCookie, setHasCrispCookie] = useState(false);
   const { loginDirect } = useAuth();
   const navigate = useNavigate();
+
+  // Check for crisp_user cookie on component mount
+  useEffect(() => {
+    const getCookie = (name: string): string | null => {
+      const value = `; ${document.cookie}`;
+      const parts = value.split(`; ${name}=`);
+      if (parts.length === 2) {
+        const cookieValue = parts.pop()?.split(';').shift();
+        return cookieValue || null;
+      }
+      return null;
+    };
+
+    const crispUser = getCookie('crisp_user');
+    if (crispUser) {
+      setHasCrispCookie(true);
+    }
+  }, []);
 
   const handleOAuthLogin = async () => {
     try {
@@ -107,6 +126,13 @@ const LoginPage: React.FC = () => {
         {error && (
           <Alert severity="error" sx={{ mb: 3 }}>
             {error}
+          </Alert>
+        )}
+
+        {hasCrispCookie && (
+          <Alert severity="info" sx={{ mb: 3 }}>
+            Intranet authentication detected. You should be automatically logged in.
+            If login fails, please contact your system administrator.
           </Alert>
         )}
 

@@ -182,11 +182,17 @@ export CORS_ORIGINS='["https://localhost:3000", "https://localhost:3001", "https
 # SSL certificates for HTTPS
 SSL_KEYFILE="${SSL_KEYFILE:-./ssl/key.pem}"
 SSL_CERTFILE="${SSL_CERTFILE:-./ssl/cert.pem}"
+SSL_CA_CERTS="${SSL_CA_CERTS:-./ssl/FICARoot.pem}"
 
 # Start with HTTPS if certificates exist, otherwise HTTP
 if [ -f "$SSL_KEYFILE" ] && [ -f "$SSL_CERTFILE" ]; then
     echo "🔒 Starting with HTTPS using SSL certificates"
-    uvicorn main:app --host 0.0.0.0 --port $BACKEND_PORT --reload --ssl-keyfile "$SSL_KEYFILE" --ssl-certfile "$SSL_CERTFILE"
+    if [ -f "$SSL_CA_CERTS" ]; then
+        echo "📋 Using CA certificate: $SSL_CA_CERTS"
+        uvicorn main:app --host 0.0.0.0 --port $BACKEND_PORT --reload --ssl-keyfile "$SSL_KEYFILE" --ssl-certfile "$SSL_CERTFILE" --ssl-ca-certs "$SSL_CA_CERTS"
+    else
+        uvicorn main:app --host 0.0.0.0 --port $BACKEND_PORT --reload --ssl-keyfile "$SSL_KEYFILE" --ssl-certfile "$SSL_CERTFILE"
+    fi
 else
     echo "⚠️ SSL certificates not found at $SSL_KEYFILE and $SSL_CERTFILE"
     echo "🔓 Starting with HTTP (not recommended for production)"

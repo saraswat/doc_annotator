@@ -34,10 +34,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const isAuthenticated = !!user;
 
+  // Helper function to get cookie value
+  const getCookie = (name: string): string | null => {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) {
+      const cookieValue = parts.pop()?.split(';').shift();
+      return cookieValue || null;
+    }
+    return null;
+  };
+
   // Check if user is already logged in on app start
   useEffect(() => {
     const initAuth = async () => {
       const token = localStorage.getItem('access_token');
+      
       if (token) {
         try {
           const userData = await authService.getCurrentUser();
@@ -48,10 +60,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           if (!refreshed) {
             localStorage.removeItem('access_token');
             localStorage.removeItem('refresh_token');
+            // Try cookie authentication as fallback
+            await tryCookieAuth();
           }
         }
+      } else {
+        // No token, try cookie authentication for intranet
+        await tryCookieAuth();
       }
       setIsLoading(false);
+    };
+
+    const tryCookieAuth = async () => {
+      const crispUser = getCookie('crisp_user');
+      if (crispUser) {
+        try {
+          const tokens = await authService.loginWithCookie();
+          localStorage.setItem('access_token', tokens.accessToken);
+          localStorage.setItem('refresh_token', tokens.refreshToken);
+          setUser(tokens.user);
+          toast.success(`Welcome ${tokens.user.name}!`);
+        } catch (error) {
+          console.error('Cookie authentication failed:', error);
+        }
+      }
     };
 
     initAuth();

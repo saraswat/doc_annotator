@@ -322,3 +322,61 @@ async def change_password(
     await db.refresh(current_user)
     
     return {"message": "Password changed successfully"}
+
+@router.post("/login/cookie")
+async def login_with_cookie(
+    request: Request,
+    db: AsyncSession = Depends(get_async_session)
+):
+    """Login using crisp_user cookie for intranet environments"""
+    # Get crisp_user cookie
+    crisp_user = request.cookies.get("crisp_user")
+    
+    if not crisp_user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="No crisp_user cookie found"
+        )
+    
+    # Check if user exists
+    result = await db.execute(
+        select(User).where(User.email == crisp_user)
+    )
+    user = result.scalar_one_or_none()
+    
+    if not user:
+        # Create new user automatically for intranet authentication
+        user = User(
+            email=crisp_user,
+            name=crisp_user.split('@')[0] if '@' in crisp_user else crisp_user,
+            oauth_provider="intranet",
+            oauth_id=crisp_user,
+            is_active=True,
+            password_reset_required=False
+        )
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+    
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User account is inactive"
+        )
+    
+    # Generate tokens
+    access_token = create_access_token(subject=user.id)
+    refresh_token = create_refresh_token(subject=user.id)
+    
+    # Update last login
+    user.last_login = datetime.utcnow()
+    await db.commit()
+    await db.refresh(user)
+    
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer",
+        "user": UserResponse.from_orm(user),
+        "password_reset_required": False
+    }

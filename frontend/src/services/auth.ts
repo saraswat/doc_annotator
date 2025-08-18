@@ -64,6 +64,17 @@ class AuthService {
       new_password: newPassword
     });
   }
+
+  async loginWithCookie(): Promise<AuthTokens> {
+    const response = await apiService.post('/auth/login/cookie');
+    
+    return {
+      accessToken: response.data.access_token,
+      refreshToken: response.data.refresh_token,
+      tokenType: response.data.token_type || 'bearer',
+      user: response.data.user
+    };
+  }
 }
 
 export const authService = new AuthService();
