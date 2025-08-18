@@ -8,10 +8,24 @@ This guide explains how to run the Document Annotation System locally without Do
 - **Node.js 18+** with npm
 - **Database**: PostgreSQL 14+ OR MySQL 8.0+ OR SQLite 3.31+ (built into Python)
 - **Redis** (optional, for real-time features)
+- **OpenSSL** (for HTTPS certificate generation)
 
 ## Quick Start
 
 ### Option A: PostgreSQL (Default)
+
+**For HTTPS (Recommended for intranet environments):**
+```bash
+# Generate SSL certificates first
+./generate-ssl-certs.sh
+
+# Setup and start with HTTPS
+./setup-local.sh postgresql
+./start-backend.sh 8000 postgresql
+./start-frontend.sh 3000 8000
+```
+
+**For HTTP (Development only):**
 
 1. **Run the setup script:**
    ```bash
@@ -75,7 +89,7 @@ This guide explains how to run the Document Annotation System locally without Do
 ./start-frontend.sh 3001 8080
 ```
 
-**Open your browser** to http://localhost:3000 (or your custom frontend port)
+**Open your browser** to https://localhost:3000 (or http://localhost:3000 if not using SSL)
 
 ## Default Admin Access
 
@@ -113,6 +127,45 @@ export REACT_APP_API_URL="http://localhost:8000/api"
 npm start
 ```
 
+## HTTPS Setup (Required for Intranet Environments)
+
+For intranet environments requiring HTTPS communication, follow these steps:
+
+### 1. Generate SSL Certificates
+
+```bash
+# Generate self-signed certificates for development
+./generate-ssl-certs.sh
+```
+
+This creates:
+- `ssl/key.pem` - Private key
+- `ssl/cert.pem` - Self-signed certificate
+
+### 2. Start Services with HTTPS
+
+```bash
+# Backend will automatically use HTTPS if certificates exist
+./start-backend.sh 8000 [database_type]
+
+# Frontend will use HTTPS if certificates exist
+./start-frontend.sh 3000 8000
+```
+
+### 3. Browser Certificate Warning
+
+Since these are self-signed certificates, your browser will show a security warning:
+1. Click "Advanced" 
+2. Click "Proceed to localhost (unsafe)"
+3. Accept the certificate for both frontend and backend
+
+### 4. Production Certificates
+
+For production intranet deployment, replace the self-signed certificates with:
+- CA-issued certificates from your organization
+- Internal certificate authority certificates
+- Place them as `ssl/cert.pem` and `ssl/key.pem`
+
 ## Configuration
 
 ### Backend Environment Variables (.env)
@@ -133,16 +186,21 @@ ADMIN_INITIAL_PASSWORD=temppass123
 OAUTH_PROVIDER=google
 OAUTH_CLIENT_ID=your-oauth-client-id
 OAUTH_CLIENT_SECRET=your-oauth-client-secret
-OAUTH_REDIRECT_URI=http://localhost:3000/auth/callback
+OAUTH_REDIRECT_URI=https://localhost:3000/auth/callback
 
-# CORS
-CORS_ORIGINS=["http://localhost:3000"]
+# CORS (use HTTPS for intranet)
+CORS_ORIGINS=["https://localhost:3000"]
 ```
 
 ### Frontend Environment Variables (.env)
 ```bash
-REACT_APP_API_URL=http://localhost:8000/api
-REACT_APP_WS_URL=ws://localhost:8000
+# For HTTPS (recommended)
+REACT_APP_API_URL=https://localhost:8000/api
+REACT_APP_WS_URL=wss://localhost:8000
+
+# For HTTP (development only)
+# REACT_APP_API_URL=http://localhost:8000/api
+# REACT_APP_WS_URL=ws://localhost:8000
 ```
 
 ## Database Setup

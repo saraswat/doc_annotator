@@ -134,10 +134,10 @@ ADMIN_INITIAL_PASSWORD=temppass123
 OAUTH_PROVIDER=google
 OAUTH_CLIENT_ID=
 OAUTH_CLIENT_SECRET=
-OAUTH_REDIRECT_URI=http://localhost:3000/auth/callback
+OAUTH_REDIRECT_URI=https://localhost:3000/auth/callback
 
 # CORS
-CORS_ORIGINS=["http://localhost:3000"]
+CORS_ORIGINS=["https://localhost:3000"]
 
 # Redis (optional)
 REDIS_URL=redis://localhost:6379
@@ -147,12 +147,12 @@ EOF
 echo "📝 Creating frontend environment configuration..."
 cat > frontend/.env << EOF
 # API Configuration
-REACT_APP_API_URL=http://localhost:8000/api
-REACT_APP_WS_URL=ws://localhost:8000
+REACT_APP_API_URL=https://localhost:8000/api
+REACT_APP_WS_URL=wss://localhost:8000
 
 # OAuth Configuration (optional)
 REACT_APP_OAUTH_CLIENT_ID=
-REACT_APP_OAUTH_REDIRECT_URI=http://localhost:3000/auth/callback
+REACT_APP_OAUTH_REDIRECT_URI=https://localhost:3000/auth/callback
 EOF
 
 # Set up backend

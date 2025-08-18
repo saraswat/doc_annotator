@@ -33,8 +33,8 @@ fi
 
 # Set environment variables
 echo "⚙️ Setting environment variables..."
-export REACT_APP_API_URL="http://localhost:$BACKEND_PORT/api"
-export REACT_APP_WS_URL="ws://localhost:$BACKEND_PORT"
+export REACT_APP_API_URL="https://localhost:$BACKEND_PORT/api"
+export REACT_APP_WS_URL="wss://localhost:$BACKEND_PORT"
 export PORT="$FRONTEND_PORT"
 
 echo "🗄️ Environment Configuration:"
@@ -43,18 +43,29 @@ echo "  Backend Port: $BACKEND_PORT"
 echo "  REACT_APP_API_URL: $REACT_APP_API_URL"
 echo "  REACT_APP_WS_URL: $REACT_APP_WS_URL"
 
-# Check if backend is running
+# Check if backend is running (try HTTPS first, then HTTP)
 echo "🔍 Checking backend connection..."
-if curl -s "http://localhost:$BACKEND_PORT/health" > /dev/null; then
-    echo "✅ Backend is running and accessible"
+if curl -k -s "https://localhost:$BACKEND_PORT/health" > /dev/null; then
+    echo "✅ Backend is running and accessible via HTTPS"
+elif curl -s "http://localhost:$BACKEND_PORT/health" > /dev/null; then
+    echo "✅ Backend is running via HTTP"
+    echo "⚠️ Consider generating SSL certificates for HTTPS: ./generate-ssl-certs.sh"
 else
-    echo "⚠️ Warning: Backend may not be running on http://localhost:$BACKEND_PORT"
+    echo "⚠️ Warning: Backend may not be running on localhost:$BACKEND_PORT"
     echo "💡 Make sure to start the backend first with ./start-backend.sh $BACKEND_PORT"
 fi
 
-# Start the React development server
-echo ""
-echo "🌐 Starting React development server on http://localhost:$FRONTEND_PORT..."
+# Check if we need HTTPS for frontend
+HTTPS_REQUIRED="${HTTPS:-false}"
+if [ -f "./ssl/cert.pem" ] && [ -f "./ssl/key.pem" ]; then
+    export HTTPS=true
+    export SSL_CRT_FILE="./ssl/cert.pem"
+    export SSL_KEY_FILE="./ssl/key.pem"
+    echo "🌐 Starting React development server with HTTPS on https://localhost:$FRONTEND_PORT..."
+else
+    echo "🌐 Starting React development server on http://localhost:$FRONTEND_PORT..."
+    echo "💡 For HTTPS frontend, run: ./generate-ssl-certs.sh"
+fi
 echo "🔴 Press Ctrl+C to stop the server"
 echo ""
 

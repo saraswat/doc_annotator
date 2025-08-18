@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     OAUTH_PROVIDER: str = "google"
     OAUTH_CLIENT_ID: str = ""
     OAUTH_CLIENT_SECRET: str = ""
-    OAUTH_REDIRECT_URI: str = "http://localhost:3000/auth/callback"
+    OAUTH_REDIRECT_URI: str = "https://localhost:3000/auth/callback"
     
     # Google OAuth
     GOOGLE_DOMAIN: str = ""
@@ -31,7 +31,7 @@ class Settings(BaseSettings):
     OKTA_DOMAIN: str = ""
     
     # CORS
-    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:8000"]
+    CORS_ORIGINS: List[str] = ["https://localhost:3000", "https://localhost:8000"]
     
     # File Storage
     STORAGE_TYPE: str = "local"

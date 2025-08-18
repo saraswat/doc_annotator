@@ -162,7 +162,7 @@ const PDFViewer: React.FC<PDFViewerProps> = ({ url, annotations = [], onTextSele
         
         const documentId = urlMatch[1];
         
-        const API_BASE = (process.env as any).REACT_APP_API_URL || 'http://localhost:8000/api';
+        const API_BASE = (process.env as any).REACT_APP_API_URL || 'https://localhost:8000/api';
         const token = localStorage.getItem('access_token');
         
         const response = await axios.get(`${API_BASE}/documents/${documentId}/pdf-test`, {

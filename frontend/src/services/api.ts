@@ -1,7 +1,7 @@
 import axios, { AxiosInstance } from 'axios';
 import toast from 'react-hot-toast';
 
-const API_URL = (process.env as any).REACT_APP_API_URL || 'http://localhost:8000/api';
+const API_URL = (process.env as any).REACT_APP_API_URL || 'https://localhost:8000/api';
 
 class ApiService {
   private api: AxiosInstance;

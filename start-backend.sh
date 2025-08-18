@@ -58,11 +58,11 @@ fi
 export SECRET_KEY="${SECRET_KEY:-$(python -c 'import secrets; print(secrets.token_hex(32))')}"
 export ADMIN_USER_EMAIL="${ADMIN_USER_EMAIL:-admin@test.com}"
 export ADMIN_INITIAL_PASSWORD="${ADMIN_INITIAL_PASSWORD:-temppass123}"
-export CORS_ORIGINS='["http://localhost:3000"]'
+export CORS_ORIGINS='["https://localhost:3000"]'
 export OAUTH_CLIENT_ID="${OAUTH_CLIENT_ID:-}"
 export OAUTH_CLIENT_SECRET="${OAUTH_CLIENT_SECRET:-}"
 export OAUTH_PROVIDER="${OAUTH_PROVIDER:-google}"
-export OAUTH_REDIRECT_URI="${OAUTH_REDIRECT_URI:-http://localhost:3000/auth/callback}"
+export OAUTH_REDIRECT_URI="${OAUTH_REDIRECT_URI:-https://localhost:3000/auth/callback}"
 
 echo "🗄️ Environment Configuration:"
 echo "  DATABASE_TYPE: $DATABASE_TYPE"
@@ -177,6 +177,18 @@ echo "🔴 Press Ctrl+C to stop the server"
 echo ""
 
 # Update CORS origins to include frontend with any port
-export CORS_ORIGINS='["http://localhost:3000", "http://localhost:3001", "http://localhost:8080"]'
+export CORS_ORIGINS='["https://localhost:3000", "https://localhost:3001", "https://localhost:8080"]'
 
-uvicorn main:app --host 0.0.0.0 --port $BACKEND_PORT --reload
+# SSL certificates for HTTPS
+SSL_KEYFILE="${SSL_KEYFILE:-./ssl/key.pem}"
+SSL_CERTFILE="${SSL_CERTFILE:-./ssl/cert.pem}"
+
+# Start with HTTPS if certificates exist, otherwise HTTP
+if [ -f "$SSL_KEYFILE" ] && [ -f "$SSL_CERTFILE" ]; then
+    echo "🔒 Starting with HTTPS using SSL certificates"
+    uvicorn main:app --host 0.0.0.0 --port $BACKEND_PORT --reload --ssl-keyfile "$SSL_KEYFILE" --ssl-certfile "$SSL_CERTFILE"
+else
+    echo "⚠️ SSL certificates not found at $SSL_KEYFILE and $SSL_CERTFILE"
+    echo "🔓 Starting with HTTP (not recommended for production)"
+    uvicorn main:app --host 0.0.0.0 --port $BACKEND_PORT --reload
+fi
