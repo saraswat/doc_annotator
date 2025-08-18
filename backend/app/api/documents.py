@@ -75,9 +75,39 @@ async def upload_document(
     async with aiofiles.open(file_path, 'wb') as f:
         await f.write(content)
     
-    # Process document content
+    # Process document content with error handling
     processor = DocumentProcessor()
-    processed_content = await processor.process_document(file_path, document_type)
+    try:
+        processed_content = await processor.process_document(file_path, document_type)
+    except Exception as process_error:
+        # Fallback processing for malformed documents
+        print(f"Warning: Failed to process document {filename}: {str(process_error)}")
+        
+        # Create fallback content
+        if document_type == DocumentType.HTML:
+            try:
+                with open(file_path, 'r', encoding='utf-8', errors='replace') as f:
+                    raw_content = f.read()
+                processed_content = {
+                    "content": raw_content,
+                    "text_content": raw_content[:1000] + "..." if len(raw_content) > 1000 else raw_content,
+                    "word_count": len(raw_content.split()),
+                    "metadata": {"processing_error": str(process_error), "fallback": True}
+                }
+            except Exception:
+                processed_content = {
+                    "content": f"<p>Document could not be processed: {str(process_error)}</p>",
+                    "text_content": f"Document could not be processed: {str(process_error)}",
+                    "word_count": 0,
+                    "metadata": {"processing_error": str(process_error), "fallback": True}
+                }
+        else:
+            processed_content = {
+                "content": f"Document processing failed: {str(process_error)}",
+                "text_content": f"Document processing failed: {str(process_error)}",
+                "word_count": 0,
+                "metadata": {"processing_error": str(process_error), "fallback": True}
+            }
     
     # Create document record
     document = Document(
@@ -151,9 +181,39 @@ async def upload_single_document(
     async with aiofiles.open(final_file_path, 'wb') as f:
         await f.write(content)
     
-    # Process document content
+    # Process document content with error handling
     processor = DocumentProcessor()
-    processed_content = await processor.process_document(final_file_path, document_type)
+    try:
+        processed_content = await processor.process_document(final_file_path, document_type)
+    except Exception as process_error:
+        # Fallback processing for malformed documents
+        print(f"Warning: Failed to process document {file.filename}: {str(process_error)}")
+        
+        # Create fallback content
+        if document_type == DocumentType.HTML:
+            try:
+                with open(final_file_path, 'r', encoding='utf-8', errors='replace') as f:
+                    raw_content = f.read()
+                processed_content = {
+                    "content": raw_content,
+                    "text_content": raw_content[:1000] + "..." if len(raw_content) > 1000 else raw_content,
+                    "word_count": len(raw_content.split()),
+                    "metadata": {"processing_error": str(process_error), "fallback": True}
+                }
+            except Exception:
+                processed_content = {
+                    "content": f"<p>Document could not be processed: {str(process_error)}</p>",
+                    "text_content": f"Document could not be processed: {str(process_error)}",
+                    "word_count": 0,
+                    "metadata": {"processing_error": str(process_error), "fallback": True}
+                }
+        else:
+            processed_content = {
+                "content": f"Document processing failed: {str(process_error)}",
+                "text_content": f"Document processing failed: {str(process_error)}",
+                "word_count": 0,
+                "metadata": {"processing_error": str(process_error), "fallback": True}
+            }
     
     # Create document record
     document = Document(
@@ -297,8 +357,40 @@ async def bulk_upload_documents(
                         with open(final_file_path, 'wb') as f:
                             f.write(file_content)
                         
-                        # Process content
-                        processed_content = await processor.process_document(final_file_path, document_type)
+                        # Process content with error handling
+                        try:
+                            processed_content = await processor.process_document(final_file_path, document_type)
+                        except Exception as process_error:
+                            # Fallback processing for malformed documents
+                            print(f"Warning: Failed to process document {filename}: {str(process_error)}")
+                            
+                            # Create fallback content based on document type
+                            if document_type == DocumentType.HTML:
+                                # Read raw content and provide minimal HTML processing
+                                try:
+                                    with open(final_file_path, 'r', encoding='utf-8', errors='replace') as f:
+                                        raw_content = f.read()
+                                    processed_content = {
+                                        "content": raw_content,
+                                        "text_content": raw_content[:1000] + "..." if len(raw_content) > 1000 else raw_content,
+                                        "word_count": len(raw_content.split()),
+                                        "metadata": {"processing_error": str(process_error), "fallback": True}
+                                    }
+                                except Exception:
+                                    processed_content = {
+                                        "content": f"<p>Document could not be processed: {str(process_error)}</p>",
+                                        "text_content": f"Document could not be processed: {str(process_error)}",
+                                        "word_count": 0,
+                                        "metadata": {"processing_error": str(process_error), "fallback": True}
+                                    }
+                            else:
+                                # Generic fallback for other document types
+                                processed_content = {
+                                    "content": f"Document processing failed: {str(process_error)}",
+                                    "text_content": f"Document processing failed: {str(process_error)}",
+                                    "word_count": 0,
+                                    "metadata": {"processing_error": str(process_error), "fallback": True}
+                                }
                         
                         # Generate title from filename
                         title = Path(filename).stem.replace('_', ' ').replace('-', ' ').title()
