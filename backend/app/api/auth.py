@@ -328,6 +328,13 @@ async def debug_cookies(request: Request):
     """Debug endpoint to check cookies and headers without authentication"""
     crisp_user_cookie = request.cookies.get("crisp_user")
     crisp_user_header = request.headers.get("x-crisp-user")
+    crisp_user_final = crisp_user_cookie or crisp_user_header
+    
+    # Show email conversion logic
+    if crisp_user_final and '@' not in crisp_user_final:
+        converted_email = f"{crisp_user_final}@fmr.com"
+    else:
+        converted_email = crisp_user_final
     
     return {
         "cookies": dict(request.cookies),
@@ -336,7 +343,9 @@ async def debug_cookies(request: Request):
         "url": str(request.url),
         "crisp_user_cookie": crisp_user_cookie,
         "crisp_user_header": crisp_user_header,
-        "crisp_user_final": crisp_user_cookie or crisp_user_header
+        "crisp_user_final": crisp_user_final,
+        "converted_email": converted_email,
+        "email_conversion_applied": '@' not in crisp_user_final if crisp_user_final else False
     }
 
 @router.get("/login/cookie")
@@ -361,22 +370,30 @@ async def login_with_cookie(
             detail="No crisp_user cookie or header found"
         )
     
+    # Convert crisp_user to email format if it doesn't contain '@'
+    if '@' not in crisp_user:
+        user_email = f"{crisp_user}@fmr.com"
+        print(f"🔄 Converting username '{crisp_user}' to email '{user_email}'")
+    else:
+        user_email = crisp_user
+        print(f"✅ Using provided email '{user_email}'")
+    
     # Check if user exists
     result = await db.execute(
-        select(User).where(User.email == crisp_user)
+        select(User).where(User.email == user_email)
     )
     user = result.scalar_one_or_none()
     
     if not user:
         # Create new user automatically for intranet authentication
         user_name = crisp_user.split('@')[0] if '@' in crisp_user else crisp_user
-        print(f"👤 Creating new user for crisp_user: {crisp_user} (name: {user_name})")
+        print(f"👤 Creating new user for crisp_user: {crisp_user} (email: {user_email}, name: {user_name})")
         
         user = User(
-            email=crisp_user,
+            email=user_email,
             name=user_name,
             oauth_provider="intranet",
-            oauth_id=crisp_user,
+            oauth_id=crisp_user,  # Keep original crisp_user as oauth_id for reference
             is_active=True,
             password_reset_required=False
         )
