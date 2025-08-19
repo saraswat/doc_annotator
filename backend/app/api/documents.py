@@ -29,7 +29,6 @@ from app.core.config import settings
 router = APIRouter()
 
 @router.post("/upload", response_model=DocumentResponse)
-@router.post("/upload/", response_model=DocumentResponse)
 async def upload_document(
     file: UploadFile = File(...),
     title: str = Form(...),
@@ -134,7 +133,6 @@ async def upload_document(
     return DocumentResponse.from_orm(document)
 
 @router.post("/upload-single", response_model=DocumentResponse)
-@router.post("/upload-single/", response_model=DocumentResponse)
 async def upload_single_document(
     file: UploadFile = File(...),
     title: str = Form(...),
@@ -242,7 +240,6 @@ async def upload_single_document(
     return DocumentResponse.from_orm(document)
 
 @router.post("/bulk-upload")
-@router.post("/bulk-upload/")
 async def bulk_upload_documents(
     file: UploadFile = File(...),
     make_public: bool = Form(False),
@@ -464,7 +461,6 @@ async def bulk_upload_documents(
     }
 
 @router.post("/bulk-upload-directory")
-@router.post("/bulk-upload-directory/")
 async def bulk_upload_directory(
     files: List[UploadFile] = File(...),
     paths: List[str] = Form(...),
@@ -601,7 +597,6 @@ async def bulk_upload_directory(
     }
 
 @router.get("/", response_model=List[DocumentListResponse])
-@router.get("", response_model=List[DocumentListResponse])
 async def list_documents(
     skip: int = 0,
     limit: int = 50,
@@ -641,7 +636,6 @@ async def list_documents(
     return [DocumentListResponse.from_orm(doc) for doc in documents]
 
 @router.get("/keys", response_model=List[str])
-@router.get("/keys/", response_model=List[str])
 async def get_document_keys(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_async_session)
@@ -665,7 +659,6 @@ async def get_document_keys(
     return [key for key in keys if key]
 
 @router.get("/dates", response_model=List[str])
-@router.get("/dates/", response_model=List[str])
 async def get_document_dates(
     key: Optional[str] = None,
     current_user: User = Depends(get_current_user),
@@ -696,7 +689,6 @@ async def get_document_dates(
     return [date for date in dates if date]
 
 @router.get("/by-key-date", response_model=List[DocumentListResponse])
-@router.get("/by-key-date/", response_model=List[DocumentListResponse])
 async def get_documents_by_key_date(
     key: str,
     date: str,
@@ -722,7 +714,6 @@ async def get_documents_by_key_date(
     return [DocumentListResponse.from_orm(doc) for doc in documents]
 
 @router.get("/{document_id}", response_model=DocumentResponse)
-@router.get("/{document_id}/", response_model=DocumentResponse)
 async def get_document(
     document_id: int,
     current_user: User = Depends(get_current_user),
@@ -751,7 +742,6 @@ async def get_document(
     return DocumentResponse.from_orm(document)
 
 @router.patch("/{document_id}", response_model=DocumentResponse)
-@router.patch("/{document_id}/", response_model=DocumentResponse)
 async def update_document(
     document_id: int,
     update_data: DocumentUpdate,
@@ -789,7 +779,6 @@ async def update_document(
     return DocumentResponse.from_orm(document)
 
 @router.delete("/{document_id}")
-@router.delete("/{document_id}/")
 async def delete_document(
     document_id: int,
     current_user: User = Depends(get_current_user),
@@ -826,7 +815,6 @@ async def delete_document(
     return {"status": "deleted"}
 
 @router.get("/{document_id}/content")
-@router.get("/{document_id}/content/")
 async def get_document_content(
     document_id: int,
     current_user: User = Depends(get_current_user),
@@ -869,7 +857,6 @@ async def get_document_content(
         }
 
 @router.get("/{document_id}/pdf")
-@router.get("/{document_id}/pdf/")
 async def serve_pdf_file(
     document_id: int,
     current_user: User = Depends(get_current_user),
@@ -916,7 +903,6 @@ async def serve_pdf_file(
     )
 
 @router.get("/{document_id}/pdf-test")
-@router.get("/{document_id}/pdf-test/")
 async def serve_pdf_file_test(
     document_id: int,
     db: AsyncSession = Depends(get_async_session)

@@ -35,7 +35,7 @@ const DocumentList = forwardRef<{ refreshDocuments: () => void }>((props, ref) =
   const fetchDocuments = async () => {
     try {
       setLoading(true);
-      const response = await apiService.get('/documents/');
+      const response = await apiService.get('/documents');
       setDocuments(response.data);
       setError(null);
     } catch (err) {

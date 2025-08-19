@@ -63,7 +63,7 @@ const UserManagement: React.FC = () => {
   const loadUsers = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/admin/users/');
+      const response = await api.get('/admin/users');
       setUsers(response.data);
     } catch (error) {
       setError('Failed to load users');
@@ -74,7 +74,7 @@ const UserManagement: React.FC = () => {
 
   const handleCreateUser = async () => {
     try {
-      await api.post('/admin/users/', createUserData);
+      await api.post('/admin/users', createUserData);
       setSuccess('User created successfully');
       setCreateDialogOpen(false);
       setCreateUserData({ email: '', name: '', password: '', is_admin: false });
@@ -87,7 +87,7 @@ const UserManagement: React.FC = () => {
   const handleDeleteUser = async (userId: number) => {
     if (window.confirm('Are you sure you want to delete this user?')) {
       try {
-        await api.delete(`/admin/users/${userId}/`);
+        await api.delete(`/admin/users/${userId}`);
         setSuccess('User deleted successfully');
         loadUsers();
       } catch (error: any) {
@@ -100,7 +100,7 @@ const UserManagement: React.FC = () => {
     if (!selectedUserId) return;
     
     try {
-      await api.post(`/admin/users/${selectedUserId}/reset-password/`, {
+      await api.post(`/admin/users/${selectedUserId}/reset-password`, {
         email: '', // Not needed for admin reset
         new_password: resetPasswordData.new_password
       });

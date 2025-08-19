@@ -18,7 +18,6 @@ from app.services.annotation_service import AnnotationService
 router = APIRouter()
 
 @router.post("/", response_model=AnnotationResponse)
-@router.post("", response_model=AnnotationResponse)
 async def create_annotation(
     annotation_data: AnnotationCreate,
     current_user: User = Depends(get_current_user),
@@ -44,7 +43,6 @@ async def create_annotation(
     return annotation
 
 @router.get("/document/{document_id}", response_model=List[AnnotationWithReplies])
-@router.get("/document/{document_id}/", response_model=List[AnnotationWithReplies])
 async def get_document_annotations(
     document_id: int,
     include_resolved: bool = Query(True),
@@ -66,7 +64,6 @@ async def get_document_annotations(
     return annotations
 
 @router.patch("/{annotation_id}", response_model=AnnotationResponse)
-@router.patch("/{annotation_id}/", response_model=AnnotationResponse)
 async def update_annotation(
     annotation_id: UUID,
     update_data: AnnotationUpdate,
@@ -99,7 +96,6 @@ async def update_annotation(
     return updated
 
 @router.delete("/{annotation_id}")
-@router.delete("/{annotation_id}/")
 async def delete_annotation(
     annotation_id: UUID,
     current_user: User = Depends(get_current_user),
@@ -131,7 +127,6 @@ async def delete_annotation(
     return {"status": "deleted"}
 
 @router.post("/{annotation_id}/resolve")
-@router.post("/{annotation_id}/resolve/")
 async def resolve_annotation(
     annotation_id: UUID,
     current_user: User = Depends(get_current_user),
@@ -154,7 +149,6 @@ async def resolve_annotation(
     return resolved
 
 @router.post("/{annotation_id}/reply", response_model=AnnotationResponse)
-@router.post("/{annotation_id}/reply/", response_model=AnnotationResponse)
 async def reply_to_annotation(
     annotation_id: UUID,
     reply_data: AnnotationCreate,

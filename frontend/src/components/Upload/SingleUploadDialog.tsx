@@ -81,7 +81,7 @@ const SingleUploadDialog: React.FC<SingleUploadDialogProps> = ({
       formData.append('document_key', documentKey);
       formData.append('document_date', documentDate);
 
-      const response = await apiService.post('/documents/upload-single/', formData, {
+      const response = await apiService.post('/documents/upload-single', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },

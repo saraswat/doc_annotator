@@ -67,7 +67,6 @@ async def get_oauth_client():
     return client, config
 
 @router.get("/login")
-@router.get("/login/")
 async def login():
     """Initiate OAuth login flow"""
     try:
@@ -103,7 +102,6 @@ async def login():
         return {"authorization_url": auth_url, "state": state}
 
 @router.post("/callback")
-@router.post("/callback/")
 async def oauth_callback(
     code: str = Form(...),
     state: str = Form(...),
@@ -241,7 +239,6 @@ async def get_or_create_user(
     return user
 
 @router.post("/refresh")
-@router.post("/refresh/")
 async def refresh_token(refresh_token: str):
     """Refresh access token using refresh token"""
     from app.core.security import verify_token
@@ -262,19 +259,16 @@ async def refresh_token(refresh_token: str):
     }
 
 @router.get("/me", response_model=UserResponse)
-@router.get("/me/", response_model=UserResponse)
 async def get_current_user_info(current_user: User = Depends(get_current_user)):
     """Get current user information"""
     return UserResponse.from_orm(current_user)
 
 @router.post("/logout")
-@router.post("/logout/")
 async def logout():
     """Logout user (client should delete tokens)"""
     return {"message": "Logged out successfully"}
 
 @router.post("/login/password")
-@router.post("/login/password/")
 async def login_with_password(
     user_data: UserPasswordLogin,
     db: AsyncSession = Depends(get_async_session)
@@ -312,7 +306,6 @@ async def login_with_password(
     }
 
 @router.post("/password/change")
-@router.post("/password/change/")
 async def change_password(
     password_data: UserPasswordReset,
     current_user: User = Depends(get_current_user),
@@ -331,7 +324,6 @@ async def change_password(
     return {"message": "Password changed successfully"}
 
 @router.get("/debug/cookies")
-@router.get("/debug/cookies/")
 async def debug_cookies(request: Request):
     """Debug endpoint to check cookies and headers without authentication"""
     crisp_user_cookie = request.cookies.get("crisp_user")
@@ -357,7 +349,6 @@ async def debug_cookies(request: Request):
     }
 
 @router.get("/login/cookie")
-@router.get("/login/cookie/")
 async def login_with_cookie(
     request: Request,
     db: AsyncSession = Depends(get_async_session)

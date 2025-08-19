@@ -56,7 +56,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children, currentDocumentId, on
       try {
         setLoading(true);
         setError(null);
-        const response = await apiService.get('/documents/keys/');
+        const response = await apiService.get('/documents/keys');
         
         const keysArray = Array.isArray(response.data) 
           ? response.data.filter(key => typeof key === 'string' && key.trim() !== '')
@@ -86,7 +86,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children, currentDocumentId, on
 
       try {
         setLoading(true);
-        const response = await apiService.get(`/documents/dates/?key=${encodeURIComponent(selectedKey)}`);
+        const response = await apiService.get(`/documents/dates?key=${encodeURIComponent(selectedKey)}`);
         
         const datesArray = Array.isArray(response.data) 
           ? response.data.filter(date => typeof date === 'string' && date.trim() !== '')
@@ -118,7 +118,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children, currentDocumentId, on
       try {
         setLoading(true);
         const response = await apiService.get(
-          `/documents/by-key-date/?key=${encodeURIComponent(selectedKey)}&date=${encodeURIComponent(selectedDate)}`
+          `/documents/by-key-date?key=${encodeURIComponent(selectedKey)}&date=${encodeURIComponent(selectedDate)}`
         );
         
         const documentsArray = Array.isArray(response.data) ? response.data : [];
@@ -158,7 +158,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children, currentDocumentId, on
     if (selectedKey) {
       const fetchKeys = async () => {
         try {
-          const response = await apiService.get('/documents/keys/');
+          const response = await apiService.get('/documents/keys');
           const keysArray = Array.isArray(response.data) 
             ? response.data.filter(key => typeof key === 'string' && key.trim() !== '')
             : [];
@@ -179,7 +179,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children, currentDocumentId, on
     if (selectedKey) {
       const fetchKeys = async () => {
         try {
-          const response = await apiService.get('/documents/keys/');
+          const response = await apiService.get('/documents/keys');
           const keysArray = Array.isArray(response.data) 
             ? response.data.filter(key => typeof key === 'string' && key.trim() !== '')
             : [];
