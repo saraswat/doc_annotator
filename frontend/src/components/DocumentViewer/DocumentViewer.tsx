@@ -555,12 +555,6 @@ const DocumentViewer: React.FC = () => {
       {/* Document content */}
       <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, paddingRight: '320px' }}>
         <Container maxWidth="lg" sx={{ py: 2, flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2, flexShrink: 0 }}>
-            <Typography variant="h4" gutterBottom>
-              {document.title}
-            </Typography>
-          </Box>
-          
           <Paper 
             elevation={1} 
             sx={{ p: 3, bgcolor: 'white', flex: 1, overflow: 'auto', minHeight: 0 }}
