@@ -53,7 +53,7 @@ class ApiService {
           const refreshToken = localStorage.getItem('refresh_token');
           if (refreshToken) {
             try {
-              const response = await this.api.post('/auth/refresh', { 
+              const response = await this.api.post('/auth/refresh/', { 
                 refresh_token: refreshToken 
               });
               localStorage.setItem('access_token', response.data.access_token);

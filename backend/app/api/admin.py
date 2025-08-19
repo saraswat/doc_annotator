@@ -13,6 +13,7 @@ from app.schemas.user import UserResponse, UserCreateByAdmin, UserPasswordReset
 router = APIRouter()
 
 @router.get("/users", response_model=List[UserResponse])
+@router.get("/users/", response_model=List[UserResponse])
 async def get_all_users(
     admin_user: User = Depends(get_current_admin_user),
     db: AsyncSession = Depends(get_async_session)
@@ -23,6 +24,7 @@ async def get_all_users(
     return [UserResponse.from_orm(user) for user in users]
 
 @router.post("/users", response_model=UserResponse)
+@router.post("/users/", response_model=UserResponse)
 async def create_user_by_admin(
     user_data: UserCreateByAdmin,
     admin_user: User = Depends(get_current_admin_user),
@@ -58,6 +60,7 @@ async def create_user_by_admin(
     return UserResponse.from_orm(user)
 
 @router.post("/users/{user_id}/reset-password")
+@router.post("/users/{user_id}/reset-password/")
 async def reset_user_password(
     user_id: int,
     password_data: UserPasswordReset,
@@ -87,6 +90,7 @@ async def reset_user_password(
     return {"message": "Password reset successfully", "user_id": user_id}
 
 @router.delete("/users/{user_id}")
+@router.delete("/users/{user_id}/")
 async def delete_user(
     user_id: int,
     admin_user: User = Depends(get_current_admin_user),
@@ -116,6 +120,7 @@ async def delete_user(
     return {"message": "User deleted successfully", "user_id": user_id}
 
 @router.get("/documents")
+@router.get("/documents/")
 async def get_all_documents(
     admin_user: User = Depends(get_current_admin_user),
     db: AsyncSession = Depends(get_async_session)
@@ -141,6 +146,7 @@ async def get_all_documents(
     ]
 
 @router.patch("/documents/{document_id}/toggle-public")
+@router.patch("/documents/{document_id}/toggle-public/")
 async def toggle_document_public(
     document_id: int,
     admin_user: User = Depends(get_current_admin_user),
@@ -163,6 +169,7 @@ async def toggle_document_public(
     }
 
 @router.delete("/documents/{document_id}")
+@router.delete("/documents/{document_id}/")
 async def delete_document(
     document_id: int,
     admin_user: User = Depends(get_current_admin_user),

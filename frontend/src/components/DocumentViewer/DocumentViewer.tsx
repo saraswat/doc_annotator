@@ -116,7 +116,7 @@ const DocumentViewer: React.FC = () => {
         }
 
         // Fetch document details
-        const response = await apiService.get(`/documents/${documentId}`);
+        const response = await apiService.get(`/documents/${documentId}/`);
         
         if (isMounted) {
           setDocument(response.data);

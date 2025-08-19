@@ -59,7 +59,7 @@ const DocumentManagement: React.FC = () => {
   const loadDocuments = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/admin/documents');
+      const response = await api.get('/admin/documents/');
       setDocuments(response.data);
     } catch (error) {
       setError('Failed to load documents');
@@ -71,7 +71,7 @@ const DocumentManagement: React.FC = () => {
   const handleDeleteDocument = async (documentId: number) => {
     if (window.confirm('Are you sure you want to delete this document? This action cannot be undone.')) {
       try {
-        await api.delete(`/admin/documents/${documentId}`);
+        await api.delete(`/admin/documents/${documentId}/`);
         setSuccess('Document deleted successfully');
         loadDocuments();
       } catch (error: any) {
@@ -82,7 +82,7 @@ const DocumentManagement: React.FC = () => {
 
   const handleTogglePublic = async (documentId: number) => {
     try {
-      const response = await api.patch(`/admin/documents/${documentId}/toggle-public`);
+      const response = await api.patch(`/admin/documents/${documentId}/toggle-public/`);
       setSuccess(response.data.message);
       loadDocuments();
     } catch (error: any) {

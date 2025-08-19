@@ -130,7 +130,7 @@ const BulkUploadDialog: React.FC<BulkUploadDialogProps> = ({
         });
       }
 
-      const endpoint = uploadMode === 'file' ? '/documents/bulk-upload' : '/documents/bulk-upload-directory';
+      const endpoint = uploadMode === 'file' ? '/documents/bulk-upload/' : '/documents/bulk-upload-directory/';
       const response = await apiService.post(endpoint, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
