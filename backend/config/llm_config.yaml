@@ -1,0 +1,62 @@
+# LLM Endpoint Configuration
+llm_providers:
+  openai:
+    api_url: "https://api.openai.com/v1/chat/completions"
+    api_key: "${OPENAI_API_KEY}"  # Environment variable
+    models:
+      - gpt-4
+      - gpt-4-turbo
+      - gpt-3.5-turbo
+    default_model: "gpt-4"
+    timeout: 60
+    max_retries: 3
+    
+  anthropic:
+    api_url: "https://api.anthropic.com/v1/messages"
+    api_key: "${ANTHROPIC_API_KEY}"
+    models:
+      - claude-3-opus-20240229
+      - claude-3-sonnet-20240229
+    default_model: "claude-3-opus-20240229"
+    timeout: 60
+    
+  custom:
+    api_url: "${CUSTOM_LLM_URL}"  # Your custom endpoint
+    api_key: "${CUSTOM_LLM_KEY}"
+    models:
+      - custom-model
+    default_model: "custom-model"
+    timeout: 120
+    
+# Default settings
+defaults:
+  provider: "openai"
+  temperature: 0.7
+  max_tokens: 2000
+  top_p: 1.0
+  frequency_penalty: 0.0
+  presence_penalty: 0.0
+  stream: true
+
+# Context window settings
+context_settings:
+  max_conversation_tokens: 8000
+  max_document_chunks: 10
+  chunk_size: 1000
+  overlap: 200
+  
+# System prompts
+system_prompts:
+  default: |
+    You are an intelligent assistant helping users analyze and work with documents.
+    You have access to their document annotations and can help them understand complex information.
+    Always be helpful, accurate, and concise.
+    
+  with_context: |
+    You are an intelligent assistant with access to the user's documents and annotations.
+    Current problem context: {context_summary}
+    Active tasks: {tasks}
+    Referenced documents: {documents}
+    
+    Help the user with their query while keeping this context in mind.
+    Update the problem context if the conversation reveals new goals or tasks.

@@ -1,0 +1,88 @@
+from pydantic import BaseModel
+from datetime import datetime
+from typing import Optional, List, Dict, Any
+from uuid import UUID
+
+class ChatSettings(BaseModel):
+    model: str = "gpt-4"
+    temperature: float = 0.7
+    max_tokens: int = 2000
+    web_browsing: bool = False
+    deep_research: bool = False
+    include_documents: List[str] = []
+
+class ChatSessionCreate(BaseModel):
+    title: Optional[str] = None
+
+class ChatSessionResponse(BaseModel):
+    id: UUID
+    user_id: int
+    title: str
+    created_at: datetime
+    updated_at: datetime
+    status: str
+    metadata: Dict[str, Any] = {}
+    settings: Dict[str, Any] = {}
+    message_count: int
+    total_tokens: int
+    messages: Optional[List['ChatMessageResponse']] = None
+
+    class Config:
+        from_attributes = True
+
+class ChatMessageCreate(BaseModel):
+    content: str
+    settings: ChatSettings
+    context_options: Dict[str, Any] = {}
+
+class ChatMessageResponse(BaseModel):
+    id: UUID
+    session_id: UUID
+    role: str
+    content: str
+    timestamp: datetime
+    tokens: Optional[int] = None
+    model: Optional[str] = None
+    metadata: Dict[str, Any] = {}
+    document_references: List[Dict[str, Any]] = []
+    annotation_references: List[str] = []
+
+    class Config:
+        from_attributes = True
+
+class TaskCreate(BaseModel):
+    description: str
+    priority: str = "medium"
+
+class TaskUpdate(BaseModel):
+    description: Optional[str] = None
+    status: Optional[str] = None
+    priority: Optional[str] = None
+
+class TaskResponse(BaseModel):
+    id: str
+    description: str
+    status: str
+    priority: str
+    created_at: datetime
+    completed_at: Optional[datetime] = None
+
+class ContextUpdate(BaseModel):
+    summary: Optional[str] = None
+    current_goal: Optional[str] = None
+    tasks: Optional[List[Dict[str, Any]]] = None
+    relevant_documents: Optional[List[str]] = None
+
+class ContextResponse(BaseModel):
+    session_id: UUID
+    summary: Optional[str] = None
+    current_goal: Optional[str] = None
+    tasks: List[Dict[str, Any]] = []
+    relevant_documents: List[str] = []
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+# Forward reference resolution
+ChatSessionResponse.model_rebuild()

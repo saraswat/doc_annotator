@@ -125,6 +125,10 @@ class ApiService {
       },
     });
   }
+
+  getBaseURL(): string {
+    return this.api.defaults.baseURL || '';
+  }
 }
 
 export default new ApiService();

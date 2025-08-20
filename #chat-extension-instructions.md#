@@ -1,0 +1,1910 @@
+# Chat System Extension for Document Annotation Platform
+## Complete Implementation Instructions for Claude for Code
+
+## Overview
+Extend the existing document annotation system with an integrated AI chat interface. Users can initiate chat sessions to discuss documents, get help with analysis, and maintain a problem-solving context. The system maintains conversation history, tracks the current context, and integrates with configurable LLM endpoints.
+
+## Architecture Overview
+
+As below, except that the rightmost Controls panel should be moved to be part of the leftmost Sidebar panel.
+```
+┌──────────────────────────────────────────────────────────────┐
+│                      React Frontend                          │
+├─────────────┬──────────────────┬──────────────┬──────────────┤
+│   Sidebar   │   Main Panel     │ Context Panel│   Controls   │
+│             │                  │              │              │
+│ • Documents │ • Document View  │ • Problem    │ • View Toggle│
+│ • Chats     │   OR            │   Context    │ • Settings    │
+│   - Active  │ • Chat View     │ • Task List  │               │
+│   - History │   - Messages    │ • Current    │               │
+│ • User Info │   - Input Box   │   Goal       │               │
+└─────────────┴──────────────────┴──────────────┴──────────────┘
+                              │
+                    REST API + WebSocket
+                              │
+┌──────────────────────────────────────────────────────────────┐
+│                     FastAPI Backend                          │
+├──────────────┬──────────────────┬──────────────────────────--┤
+│  Chat Service│  Context Manager │     LLM Integration        │
+│              │                  │                            │
+│ • Sessions   │ • State Tracking │ • OpenAI Compatible API    │
+│ • History    │ • Task Extraction│ • Configurable Endpoints   │
+│ • Storage    │ • Goal Inference │ • Multiple Models          │
+└──────────────┴──────────────────┴──────────────────────────--┘
+                              │
+                    ┌─────────┴─────────┐
+                    │    PostgreSQL     │
+                    │  + Redis Cache    │
+                    └───────────────────┘
+```
+
+## Updated Project Structure
+
+```
+document-annotation-system/
+├── frontend/
+│   └── src/
+│       ├── components/
+│       │   ├── Layout/
+│       │   │   ├── MainLayout.tsx        # Updated with view toggle
+│       │   │   ├── Sidebar.tsx           # Enhanced with chat sessions
+│       │   │   └── ViewToggle.tsx        # Document/Chat view switch
+│       │   ├── Chat/
+│       │   │   ├── ChatView.tsx          # Main chat interface
+│       │   │   ├── ChatMessage.tsx       # Individual message component
+│       │   │   ├── ChatInput.tsx         # Enhanced input with controls
+│       │   │   ├── ChatSessionList.tsx   # List of chat sessions
+│       │   │   ├── ContextPanel.tsx      # Problem-solving context
+│       │   │   └── ChatControls.tsx      # Additional chat options
+│       │   └── DocumentViewer/           # Existing components
+│       ├── contexts/
+│       │   ├── ChatContext.tsx           # Chat state management
+│       │   └── ViewContext.tsx           # View state (doc/chat)
+│       ├── hooks/
+│       │   ├── useChat.ts                # Chat operations hook
+│       │   ├── useLLM.ts                 # LLM interaction hook
+│       │   └── useContext.ts             # Context management hook
+│       ├── services/
+│       │   ├── chatService.ts            # Chat API calls
+│       │   └── llmService.ts             # LLM endpoint management
+│       └── types/
+│           ├── chat.ts                   # Chat type definitions
+│           └── context.ts                # Context type definitions
+│
+├── backend/
+│   ├── config/
+│   │   ├── llm_config.yaml              # LLM endpoint configuration
+│   │   └── settings.py                  # Updated settings
+│   ├── app/
+│   │   ├── models/
+│   │   │   ├── chat.py                  # Chat session models
+│   │   │   └── context.py               # Context state models
+│   │   ├── schemas/
+│   │   │   ├── chat.py                  # Chat Pydantic schemas
+│   │   │   └── context.py               # Context schemas
+│   │   ├── api/
+│   │   │   ├── chat.py                  # Chat endpoints
+│   │   │   └── context.py               # Context management endpoints
+│   │   ├── services/
+│   │   │   ├── chat_service.py          # Chat business logic
+│   │   │   ├── context_manager.py       # Context extraction/management
+│   │   │   ├── llm_client.py            # LLM API client
+│   │   │   └── document_retrieval.py    # RAG for document context
+│   │   └── core/
+│   │       └── llm_config.py            # LLM configuration loader
+│   └── migrations/                       # New database migrations
+└── docker-compose.yml                    # Updated with new services
+```
+
+## Frontend Implementation
+
+### 1. Chat Type Definitions (frontend/src/types/chat.ts)
+```typescript
+export interface ChatSession {
+  id: string;
+  userId: string;
+  title: string;
+  createdAt: Date;
+  updatedAt: Date;
+  lastMessage?: string;
+  messageCount: number;
+  status: 'active' | 'archived';
+  metadata?: {
+    documentIds?: string[];
+    model?: string;
+    settings?: ChatSettings;
+  };
+}
+
+export interface ChatMessage {
+  id: string;
+  sessionId: string;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  timestamp: Date;
+  metadata?: {
+    model?: string;
+    tokens?: number;
+    documentReferences?: DocumentReference[];
+    annotations?: string[];
+  };
+  status: 'sending' | 'sent' | 'error';
+}
+
+export interface ChatSettings {
+  model: string;
+  temperature: number;
+  maxTokens: number;
+  webBrowsing: boolean;
+  deepResearch: boolean;
+  includeDocuments: string[];
+}
+
+export interface ProblemContext {
+  sessionId: string;
+  summary: string;
+  currentGoal?: string;
+  tasks: Task[];
+  relevantDocuments?: string[];
+  updatedAt: Date;
+}
+
+export interface Task {
+  id: string;
+  description: string;
+  status: 'pending' | 'in_progress' | 'completed';
+  priority: 'low' | 'medium' | 'high';
+  createdAt: Date;
+  completedAt?: Date;
+}
+
+export interface DocumentReference {
+  documentId: string;
+  documentName: string;
+  relevantSection?: string;
+  confidence: number;
+}
+```
+
+### 2. Main Chat View Component (frontend/src/components/Chat/ChatView.tsx)
+```typescript
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Box, Paper, Divider, CircularProgress } from '@mui/material';
+import { useChat } from '../../hooks/useChat';
+import { useContext } from '../../hooks/useContext';
+import ChatMessage from './ChatMessage';
+import ChatInput from './ChatInput';
+import ContextPanel from './ContextPanel';
+import { ChatSession, ChatMessage as ChatMessageType, ChatSettings } from '../../types/chat';
+
+interface ChatViewProps {
+  sessionId?: string;
+  onNewSession?: () => void;
+}
+
+const ChatView: React.FC<ChatViewProps> = ({ sessionId, onNewSession }) => {
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [currentSession, setCurrentSession] = useState<ChatSession | null>(null);
+  const [messages, setMessages] = useState<ChatMessageType[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [chatSettings, setChatSettings] = useState<ChatSettings>({
+    model: 'gpt-4',
+    temperature: 0.7,
+    maxTokens: 2000,
+    webBrowsing: false,
+    deepResearch: false,
+    includeDocuments: []
+  });
+
+  const { 
+    sendMessage, 
+    loadSession, 
+    createSession,
+    streamResponse 
+  } = useChat();
+  
+  const { 
+    context, 
+    updateContext, 
+    extractTasksFromMessage 
+  } = useContext();
+
+  // Load or create session
+  useEffect(() => {
+    const initializeSession = async () => {
+      if (sessionId) {
+        const session = await loadSession(sessionId);
+        setCurrentSession(session);
+        setMessages(session.messages);
+      } else {
+        const newSession = await createSession();
+        setCurrentSession(newSession);
+        if (onNewSession) onNewSession();
+      }
+    };
+    
+    initializeSession();
+  }, [sessionId]);
+
+  // Auto-scroll to bottom
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  const handleSendMessage = async (content: string, attachments?: any[]) => {
+    if (!currentSession) return;
+
+    // Add user message immediately
+    const userMessage: ChatMessageType = {
+      id: `temp-${Date.now()}`,
+      sessionId: currentSession.id,
+      role: 'user',
+      content,
+      timestamp: new Date(),
+      status: 'sending'
+    };
+    
+    setMessages(prev => [...prev, userMessage]);
+    setIsLoading(true);
+
+    try {
+      // Send message with current settings and context
+      const response = await sendMessage({
+        sessionId: currentSession.id,
+        content,
+        settings: chatSettings,
+        context: {
+          problemContext: context,
+          documentIds: chatSettings.includeDocuments,
+          enableWebBrowsing: chatSettings.webBrowsing,
+          enableDeepResearch: chatSettings.deepResearch
+        }
+      });
+
+      // Handle streaming response
+      const assistantMessage: ChatMessageType = {
+        id: response.messageId,
+        sessionId: currentSession.id,
+        role: 'assistant',
+        content: '',
+        timestamp: new Date(),
+        status: 'sending'
+      };
+      
+      setMessages(prev => [...prev.slice(0, -1), 
+        { ...userMessage, status: 'sent', id: response.userMessageId },
+        assistantMessage
+      ]);
+
+      // Stream the response
+      await streamResponse(response.streamUrl, (chunk) => {
+        setMessages(prev => {
+          const newMessages = [...prev];
+          const lastMessage = newMessages[newMessages.length - 1];
+          if (lastMessage.role === 'assistant') {
+            lastMessage.content += chunk;
+          }
+          return newMessages;
+        });
+      });
+
+      // Update context based on conversation
+      const tasks = extractTasksFromMessage(response.content);
+      if (tasks.length > 0) {
+        await updateContext({
+          sessionId: currentSession.id,
+          tasks,
+          summary: response.contextSummary
+        });
+      }
+
+      // Mark message as sent
+      setMessages(prev => {
+        const newMessages = [...prev];
+        const lastMessage = newMessages[newMessages.length - 1];
+        if (lastMessage.role === 'assistant') {
+          lastMessage.status = 'sent';
+        }
+        return newMessages;
+      });
+
+    } catch (error) {
+      console.error('Error sending message:', error);
+      setMessages(prev => [...prev, {
+        id: `error-${Date.now()}`,
+        sessionId: currentSession.id,
+        role: 'system',
+        content: 'Failed to send message. Please try again.',
+        timestamp: new Date(),
+        status: 'error'
+      }]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSettingsChange = (newSettings: Partial<ChatSettings>) => {
+    setChatSettings(prev => ({ ...prev, ...newSettings }));
+  };
+
+  const handleAddDocument = (documentId: string) => {
+    setChatSettings(prev => ({
+      ...prev,
+      includeDocuments: [...prev.includeDocuments, documentId]
+    }));
+  };
+
+  return (
+    <Box display="flex" height="100vh">
+      {/* Main Chat Area */}
+      <Box flex={1} display="flex" flexDirection="column">
+        {/* Messages Area */}
+        <Paper 
+          elevation={0} 
+          sx={{ 
+            flex: 1, 
+            overflow: 'auto', 
+            p: 3,
+            backgroundColor: '#f5f5f5'
+          }}
+        >
+          {messages.map((message) => (
+            <ChatMessage 
+              key={message.id} 
+              message={message}
+              onRetry={() => handleSendMessage(message.content)}
+            />
+          ))}
+          {isLoading && (
+            <Box display="flex" justifyContent="center" p={2}>
+              <CircularProgress size={24} />
+            </Box>
+          )}
+          <div ref={messagesEndRef} />
+        </Paper>
+
+        <Divider />
+
+        {/* Input Area */}
+        <Box p={2}>
+          <ChatInput
+            onSend={handleSendMessage}
+            disabled={isLoading}
+            settings={chatSettings}
+            onSettingsChange={handleSettingsChange}
+            onAddDocument={handleAddDocument}
+          />
+        </Box>
+      </Box>
+
+      <Divider orientation="vertical" flexItem />
+
+      {/* Context Panel */}
+      <Box width={350}>
+        <ContextPanel 
+          context={context}
+          sessionId={currentSession?.id}
+          onUpdateContext={updateContext}
+        />
+      </Box>
+    </Box>
+  );
+};
+
+export default ChatView;
+```
+
+### 3. Enhanced Chat Input Component (frontend/src/components/Chat/ChatInput.tsx)
+```typescript
+import React, { useState, useRef } from 'react';
+import {
+  Box,
+  TextField,
+  IconButton,
+  Button,
+  Tooltip,
+  Menu,
+  MenuItem,
+  Chip,
+  Stack,
+  Switch,
+  FormControlLabel,
+  Select,
+  Popover
+} from '@mui/material';
+import {
+  Send as SendIcon,
+  AttachFile as AttachIcon,
+  Settings as SettingsIcon,
+  Add as AddIcon,
+  Search as SearchIcon,
+  Science as ResearchIcon,
+  Language as WebIcon
+} from '@mui/icons-material';
+import { ChatSettings } from '../../types/chat';
+import DocumentSelector from '../DocumentSelector';
+
+interface ChatInputProps {
+  onSend: (message: string, attachments?: any[]) => void;
+  disabled?: boolean;
+  settings: ChatSettings;
+  onSettingsChange: (settings: Partial<ChatSettings>) => void;
+  onAddDocument: (documentId: string) => void;
+}
+
+const ChatInput: React.FC<ChatInputProps> = ({
+  onSend,
+  disabled,
+  settings,
+  onSettingsChange,
+  onAddDocument
+}) => {
+  const [message, setMessage] = useState('');
+  const [settingsAnchor, setSettingsAnchor] = useState<null | HTMLElement>(null);
+  const [documentSelectorOpen, setDocumentSelectorOpen] = useState(false);
+  const textFieldRef = useRef<HTMLTextAreaElement>(null);
+
+  const handleSend = () => {
+    if (message.trim() && !disabled) {
+      onSend(message.trim());
+      setMessage('');
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
+  const availableModels = [
+    { value: 'gpt-4', label: 'GPT-4' },
+    { value: 'gpt-4-turbo', label: 'GPT-4 Turbo' },
+    { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo' },
+    { value: 'claude-3-opus', label: 'Claude 3 Opus' },
+    { value: 'claude-3-sonnet', label: 'Claude 3 Sonnet' },
+    { value: 'custom', label: 'Custom Endpoint' }
+  ];
+
+  return (
+    <Box>
+      {/* Active Settings Display */}
+      <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
+        <Chip 
+          label={`Model: ${settings.model}`} 
+          size="small" 
+          variant="outlined"
+        />
+        {settings.webBrowsing && (
+          <Chip 
+            icon={<WebIcon />} 
+            label="Web Browsing" 
+            size="small" 
+            color="primary"
+            onDelete={() => onSettingsChange({ webBrowsing: false })}
+          />
+        )}
+        {settings.deepResearch && (
+          <Chip 
+            icon={<ResearchIcon />} 
+            label="Deep Research" 
+            size="small" 
+            color="secondary"
+            onDelete={() => onSettingsChange({ deepResearch: false })}
+          />
+        )}
+        {settings.includeDocuments.length > 0 && (
+          <Chip 
+            label={`${settings.includeDocuments.length} Documents`} 
+            size="small" 
+            color="success"
+          />
+        )}
+      </Stack>
+
+      {/* Input Field with Controls */}
+      <Box display="flex" alignItems="flex-end" gap={1}>
+        <TextField
+          ref={textFieldRef}
+          fullWidth
+          multiline
+          maxRows={6}
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          onKeyPress={handleKeyPress}
+          placeholder="Type your message... (Shift+Enter for new line)"
+          disabled={disabled}
+          variant="outlined"
+          sx={{
+            '& .MuiOutlinedInput-root': {
+              borderRadius: 2
+            }
+          }}
+        />
+
+        {/* Control Buttons */}
+        <Stack direction="row" spacing={0.5}>
+          {/* Add Document */}
+          <Tooltip title="Add Documents">
+            <IconButton 
+              color="primary"
+              onClick={() => setDocumentSelectorOpen(true)}
+            >
+              <AddIcon />
+            </IconButton>
+          </Tooltip>
+
+          {/* Web Browsing Toggle */}
+          <Tooltip title="Toggle Web Browsing">
+            <IconButton 
+              color={settings.webBrowsing ? "primary" : "default"}
+              onClick={() => onSettingsChange({ 
+                webBrowsing: !settings.webBrowsing 
+              })}
+            >
+              <WebIcon />
+            </IconButton>
+          </Tooltip>
+
+          {/* Deep Research Toggle */}
+          <Tooltip title="Toggle Deep Research">
+            <IconButton 
+              color={settings.deepResearch ? "secondary" : "default"}
+              onClick={() => onSettingsChange({ 
+                deepResearch: !settings.deepResearch 
+              })}
+            >
+              <ResearchIcon />
+            </IconButton>
+          </Tooltip>
+
+          {/* Settings */}
+          <Tooltip title="Chat Settings">
+            <IconButton onClick={(e) => setSettingsAnchor(e.currentTarget)}>
+              <SettingsIcon />
+            </IconButton>
+          </Tooltip>
+
+          {/* Send Button */}
+          <Tooltip title="Send Message">
+            <IconButton 
+              color="primary" 
+              onClick={handleSend}
+              disabled={disabled || !message.trim()}
+              sx={{
+                backgroundColor: 'primary.main',
+                color: 'white',
+                '&:hover': {
+                  backgroundColor: 'primary.dark'
+                }
+              }}
+            >
+              <SendIcon />
+            </IconButton>
+          </Tooltip>
+        </Stack>
+      </Box>
+
+      {/* Settings Menu */}
+      <Popover
+        open={Boolean(settingsAnchor)}
+        anchorEl={settingsAnchor}
+        onClose={() => setSettingsAnchor(null)}
+        anchorOrigin={{
+          vertical: 'top',
+          horizontal: 'right',
+        }}
+        transformOrigin={{
+          vertical: 'bottom',
+          horizontal: 'right',
+        }}
+      >
+        <Box p={2} minWidth={300}>
+          <Stack spacing={2}>
+            <Box>
+              <label>Model:</label>
+              <Select
+                fullWidth
+                size="small"
+                value={settings.model}
+                onChange={(e) => onSettingsChange({ model: e.target.value })}
+              >
+                {availableModels.map(model => (
+                  <MenuItem key={model.value} value={model.value}>
+                    {model.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </Box>
+            
+            <Box>
+              <label>Temperature: {settings.temperature}</label>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.1"
+                value={settings.temperature}
+                onChange={(e) => onSettingsChange({ 
+                  temperature: parseFloat(e.target.value) 
+                })}
+                style={{ width: '100%' }}
+              />
+            </Box>
+
+            <Box>
+              <label>Max Tokens:</label>
+              <TextField
+                type="number"
+                size="small"
+                fullWidth
+                value={settings.maxTokens}
+                onChange={(e) => onSettingsChange({ 
+                  maxTokens: parseInt(e.target.value) 
+                })}
+              />
+            </Box>
+          </Stack>
+        </Box>
+      </Popover>
+
+      {/* Document Selector Dialog */}
+      <DocumentSelector
+        open={documentSelectorOpen}
+        onClose={() => setDocumentSelectorOpen(false)}
+        onSelect={onAddDocument}
+        selectedDocuments={settings.includeDocuments}
+      />
+    </Box>
+  );
+};
+
+export default ChatInput;
+```
+
+### 4. Context Panel Component (frontend/src/components/Chat/ContextPanel.tsx)
+```typescript
+import React, { useState } from 'react';
+import {
+  Box,
+  Paper,
+  Typography,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemIcon,
+  Checkbox,
+  IconButton,
+  Divider,
+  Chip,
+  Stack,
+  Button,
+  TextField
+} from '@mui/material';
+import {
+  Task as TaskIcon,
+  Edit as EditIcon,
+  Delete as DeleteIcon,
+  Add as AddIcon,
+  Flag as FlagIcon
+} from '@mui/icons-material';
+import { ProblemContext, Task } from '../../types/chat';
+import { format } from 'date-fns';
+
+interface ContextPanelProps {
+  context: ProblemContext | null;
+  sessionId?: string;
+  onUpdateContext: (context: Partial<ProblemContext>) => void;
+}
+
+const ContextPanel: React.FC<ContextPanelProps> = ({
+  context,
+  sessionId,
+  onUpdateContext
+}) => {
+  const [editMode, setEditMode] = useState(false);
+  const [editedSummary, setEditedSummary] = useState(context?.summary || '');
+  const [newTask, setNewTask] = useState('');
+
+  const handleTaskToggle = (taskId: string) => {
+    if (!context) return;
+    
+    const updatedTasks = context.tasks.map(task =>
+      task.id === taskId
+        ? { 
+            ...task, 
+            status: task.status === 'completed' ? 'pending' : 'completed',
+            completedAt: task.status === 'completed' ? undefined : new Date()
+          }
+        : task
+    );
+    
+    onUpdateContext({ tasks: updatedTasks });
+  };
+
+  const handleAddTask = () => {
+    if (!newTask.trim() || !context) return;
+    
+    const task: Task = {
+      id: `task-${Date.now()}`,
+      description: newTask.trim(),
+      status: 'pending',
+      priority: 'medium',
+      createdAt: new Date()
+    };
+    
+    onUpdateContext({ tasks: [...context.tasks, task] });
+    setNewTask('');
+  };
+
+  const handleDeleteTask = (taskId: string) => {
+    if (!context) return;
+    
+    const updatedTasks = context.tasks.filter(task => task.id !== taskId);
+    onUpdateContext({ tasks: updatedTasks });
+  };
+
+  const handleSaveSummary = () => {
+    onUpdateContext({ summary: editedSummary });
+    setEditMode(false);
+  };
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'high': return 'error';
+      case 'medium': return 'warning';
+      case 'low': return 'info';
+      default: return 'default';
+    }
+  };
+
+  if (!context) {
+    return (
+      <Paper sx={{ height: '100%', p: 2 }}>
+        <Typography variant="h6" gutterBottom>
+          Problem Context
+        </Typography>
+        <Typography color="text.secondary">
+          No active context. Start a conversation to begin.
+        </Typography>
+      </Paper>
+    );
+  }
+
+  return (
+    <Paper sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+      {/* Header */}
+      <Box p={2}>
+        <Stack direction="row" justifyContent="space-between" alignItems="center">
+          <Typography variant="h6">Problem Context</Typography>
+          <IconButton size="small" onClick={() => setEditMode(!editMode)}>
+            <EditIcon fontSize="small" />
+          </IconButton>
+        </Stack>
+        
+        <Typography variant="caption" color="text.secondary">
+          Last updated: {format(new Date(context.updatedAt), 'PPp')}
+        </Typography>
+      </Box>
+
+      <Divider />
+
+      {/* Summary Section */}
+      <Box p={2}>
+        <Typography variant="subtitle2" gutterBottom>
+          Current Goal
+        </Typography>
+        
+        {editMode ? (
+          <Box>
+            <TextField
+              fullWidth
+              multiline
+              rows={3}
+              value={editedSummary}
+              onChange={(e) => setEditedSummary(e.target.value)}
+              variant="outlined"
+              size="small"
+            />
+            <Stack direction="row" spacing={1} mt={1}>
+              <Button size="small" onClick={handleSaveSummary}>
+                Save
+              </Button>
+              <Button 
+                size="small" 
+                onClick={() => {
+                  setEditMode(false);
+                  setEditedSummary(context.summary);
+                }}
+              >
+                Cancel
+              </Button>
+            </Stack>
+          </Box>
+        ) : (
+          <Typography variant="body2" paragraph>
+            {context.summary || 'No summary yet. The AI will update this as the conversation progresses.'}
+          </Typography>
+        )}
+        
+        {context.currentGoal && (
+          <Chip 
+            label={context.currentGoal} 
+            size="small" 
+            color="primary" 
+            variant="outlined"
+          />
+        )}
+      </Box>
+
+      <Divider />
+
+      {/* Tasks Section */}
+      <Box flex={1} overflow="auto" p={2}>
+        <Typography variant="subtitle2" gutterBottom>
+          Tasks & Action Items
+        </Typography>
+        
+        <List dense>
+          {context.tasks.map((task) => (
+            <ListItem
+              key={task.id}
+              secondaryAction={
+                <IconButton 
+                  edge="end" 
+                  size="small"
+                  onClick={() => handleDeleteTask(task.id)}
+                >
+                  <DeleteIcon fontSize="small" />
+                </IconButton>
+              }
+            >
+              <ListItemIcon>
+                <Checkbox
+                  edge="start"
+                  checked={task.status === 'completed'}
+                  onChange={() => handleTaskToggle(task.id)}
+                />
+              </ListItemIcon>
+              <ListItemText
+                primary={
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      textDecoration: task.status === 'completed' ? 'line-through' : 'none'
+                    }}
+                  >
+                    {task.description}
+                  </Typography>
+                }
+                secondary={
+                  <Stack direction="row" spacing={0.5} alignItems="center">
+                    <Chip
+                      label={task.priority}
+                      size="small"
+                      color={getPriorityColor(task.priority)}
+                      sx={{ height: 16, fontSize: '0.7rem' }}
+                    />
+                    {task.completedAt && (
+                      <Typography variant="caption" color="text.secondary">
+                        Completed {format(new Date(task.completedAt), 'MMM d')}
+                      </Typography>
+                    )}
+                  </Stack>
+                }
+              />
+            </ListItem>
+          ))}
+        </List>
+        
+        {/* Add Task */}
+        <Box mt={1}>
+          <Stack direction="row" spacing={1}>
+            <TextField
+              size="small"
+              fullWidth
+              placeholder="Add a task..."
+              value={newTask}
+              onChange={(e) => setNewTask(e.target.value)}
+              onKeyPress={(e) => {
+                if (e.key === 'Enter') {
+                  handleAddTask();
+                }
+              }}
+            />
+            <IconButton size="small" onClick={handleAddTask}>
+              <AddIcon />
+            </IconButton>
+          </Stack>
+        </Box>
+      </Box>
+
+      {/* Related Documents */}
+      {context.relevantDocuments && context.relevantDocuments.length > 0 && (
+        <>
+          <Divider />
+          <Box p={2}>
+            <Typography variant="subtitle2" gutterBottom>
+              Related Documents
+            </Typography>
+            <Stack direction="row" spacing={0.5} flexWrap="wrap">
+              {context.relevantDocuments.map(docId => (
+                <Chip 
+                  key={docId}
+                  label={docId} 
+                  size="small" 
+                  variant="outlined"
+                />
+              ))}
+            </Stack>
+          </Box>
+        </>
+      )}
+    </Paper>
+  );
+};
+
+export default ContextPanel;
+```
+
+## Backend Implementation
+
+### 1. LLM Configuration File (backend/config/llm_config.yaml)
+```yaml
+# LLM Endpoint Configuration
+llm_providers:
+  openai:
+    api_url: "https://api.openai.com/v1/chat/completions"
+    api_key: "${OPENAI_API_KEY}"  # Environment variable
+    models:
+      - gpt-4
+      - gpt-4-turbo
+      - gpt-3.5-turbo
+    default_model: "gpt-4"
+    timeout: 60
+    max_retries: 3
+    
+  anthropic:
+    api_url: "https://api.anthropic.com/v1/messages"
+    api_key: "${ANTHROPIC_API_KEY}"
+    models:
+      - claude-3-opus
+      - claude-3-sonnet
+    default_model: "claude-3-opus"
+    timeout: 60
+    
+  custom:
+    api_url: "${CUSTOM_LLM_URL}"  # Your custom endpoint
+    api_key: "${CUSTOM_LLM_KEY}"
+    models:
+      - custom-model
+    default_model: "custom-model"
+    timeout: 120
+    
+# Default settings
+defaults:
+  provider: "openai"
+  temperature: 0.7
+  max_tokens: 2000
+  top_p: 1.0
+  frequency_penalty: 0.0
+  presence_penalty: 0.0
+  stream: true
+
+# Context window settings
+context_settings:
+  max_conversation_tokens: 8000
+  max_document_chunks: 10
+  chunk_size: 1000
+  overlap: 200
+  
+# System prompts
+system_prompts:
+  default: |
+    You are an intelligent assistant helping users analyze and work with documents.
+    You have access to their document annotations and can help them understand complex information.
+    Always be helpful, accurate, and concise.
+    
+  with_context: |
+    You are an intelligent assistant with access to the user's documents and annotations.
+    Current problem context: {context_summary}
+    Active tasks: {tasks}
+    Referenced documents: {documents}
+    
+    Help the user with their query while keeping this context in mind.
+    Update the problem context if the conversation reveals new goals or tasks.
+```
+
+### 2. Database Models (backend/app/models/chat.py)
+```python
+from sqlalchemy import Column, String, Integer, Text, DateTime, Boolean, ForeignKey, JSON, Float
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import relationship
+from datetime import datetime
+import uuid
+
+from app.core.database import Base
+
+class ChatSession(Base):
+    __tablename__ = "chat_sessions"
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    title = Column(String(200), default="New Chat")
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    status = Column(String(20), default="active")  # active, archived
+    
+    # Metadata
+    metadata = Column(JSON, default={})
+    settings = Column(JSON, default={})
+    
+    # Statistics
+    message_count = Column(Integer, default=0)
+    total_tokens = Column(Integer, default=0)
+    
+    # Relationships
+    user = relationship("User", back_populates="chat_sessions")
+    messages = relationship("ChatMessage", back_populates="session", cascade="all, delete-orphan")
+    context = relationship("ChatContext", back_populates="session", uselist=False, cascade="all, delete-orphan")
+    
+class ChatMessage(Base):
+    __tablename__ = "chat_messages"
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    session_id = Column(UUID(as_uuid=True), ForeignKey("chat_sessions.id"), nullable=False)
+    role = Column(String(20), nullable=False)  # user, assistant, system
+    content = Column(Text, nullable=False)
+    timestamp = Column(DateTime, default=datetime.utcnow)
+    
+    # Token tracking
+    tokens = Column(Integer)
+    model = Column(String(50))
+    
+    # Metadata for references and context
+    metadata = Column(JSON, default={})
+    
+    # Document references
+    document_references = Column(JSON, default=[])
+    annotation_references = Column(JSON, default=[])
+    
+    # Relationships
+    session = relationship("ChatSession", back_populates="messages")
+
+class ChatContext(Base):
+    __tablename__ = "chat_contexts"
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    session_id = Column(UUID(as_uuid=True), ForeignKey("chat_sessions.id"), unique=True, nullable=False)
+    
+    # Problem solving context
+    summary = Column(Text)
+    current_goal = Column(String(500))
+    tasks = Column(JSON, default=[])
+    
+    # Related documents
+    relevant_documents = Column(JSON, default=[])
+    
+    # Context embeddings for similarity search
+    embedding = Column(JSON)  # Store as JSON array or use pgvector
+    
+    # Timestamps
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    session = relationship("ChatSession", back_populates="context")
+```
+
+### 3. LLM Client Service (backend/app/services/llm_client.py)
+```python
+import aiohttp
+import asyncio
+import json
+import yaml
+import os
+from typing import Dict, List, Optional, AsyncGenerator
+from datetime import datetime
+import tiktoken
+
+from app.core.config import settings
+
+class LLMClient:
+    def __init__(self):
+        self.config = self._load_config()
+        self.current_provider = self.config['defaults']['provider']
+        self.tokenizer = tiktoken.get_encoding("cl100k_base")
+        
+    def _load_config(self) -> Dict:
+        """Load LLM configuration from YAML file."""
+        config_path = os.path.join(settings.CONFIG_DIR, 'llm_config.yaml')
+        with open(config_path, 'r') as f:
+            config = yaml.safe_load(f)
+        
+        # Replace environment variables
+        config = self._replace_env_vars(config)
+        return config
+    
+    def _replace_env_vars(self, config: Dict) -> Dict:
+        """Replace ${VAR} with environment variables."""
+        import re
+        
+        def replace_vars(obj):
+            if isinstance(obj, str):
+                pattern = r'\$\{([^}]+)\}'
+                matches = re.findall(pattern, obj)
+                for match in matches:
+                    env_value = os.getenv(match, '')
+                    obj = obj.replace(f'${{{match}}}', env_value)
+                return obj
+            elif isinstance(obj, dict):
+                return {k: replace_vars(v) for k, v in obj.items()}
+            elif isinstance(obj, list):
+                return [replace_vars(item) for item in obj]
+            return obj
+        
+        return replace_vars(config)
+    
+    def count_tokens(self, text: str) -> int:
+        """Count tokens in text."""
+        return len(self.tokenizer.encode(text))
+    
+    async def complete(
+        self,
+        messages: List[Dict[str, str]],
+        model: Optional[str] = None,
+        temperature: Optional[float] = None,
+        max_tokens: Optional[int] = None,
+        stream: bool = True,
+        **kwargs
+    ) -> AsyncGenerator[str, None]:
+        """Send completion request to LLM API."""
+        provider_config = self.config['llm_providers'][self.current_provider]
+        
+        # Use defaults if not specified
+        model = model or provider_config['default_model']
+        temperature = temperature or self.config['defaults']['temperature']
+        max_tokens = max_tokens or self.config['defaults']['max_tokens']
+        
+        # Prepare request based on provider
+        if self.current_provider == 'openai':
+            request_data = {
+                'model': model,
+                'messages': messages,
+                'temperature': temperature,
+                'max_tokens': max_tokens,
+                'stream': stream,
+                **kwargs
+            }
+            headers = {
+                'Authorization': f"Bearer {provider_config['api_key']}",
+                'Content-Type': 'application/json'
+            }
+            
+        elif self.current_provider == 'anthropic':
+            # Convert to Anthropic format
+            request_data = {
+                'model': model,
+                'messages': self._convert_to_anthropic_format(messages),
+                'max_tokens': max_tokens,
+                'temperature': temperature,
+                'stream': stream
+            }
+            headers = {
+                'x-api-key': provider_config['api_key'],
+                'anthropic-version': '2023-06-01',
+                'Content-Type': 'application/json'
+            }
+            
+        else:  # Custom provider
+            request_data = {
+                'model': model,
+                'messages': messages,
+                'temperature': temperature,
+                'max_tokens': max_tokens,
+                'stream': stream,
+                **kwargs
+            }
+            headers = {
+                'Authorization': f"Bearer {provider_config['api_key']}",
+                'Content-Type': 'application/json'
+            }
+        
+        # Make the request
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                provider_config['api_url'],
+                json=request_data,
+                headers=headers,
+                timeout=aiohttp.ClientTimeout(total=provider_config.get('timeout', 60))
+            ) as response:
+                if stream:
+                    async for chunk in self._handle_stream(response, self.current_provider):
+                        yield chunk
+                else:
+                    result = await response.json()
+                    yield self._extract_content(result, self.current_provider)
+    
+    async def _handle_stream(
+        self, 
+        response: aiohttp.ClientResponse, 
+        provider: str
+    ) -> AsyncGenerator[str, None]:
+        """Handle streaming response from LLM."""
+        async for line in response.content:
+            line = line.decode('utf-8').strip()
+            if not line or line == 'data: [DONE]':
+                continue
+                
+            if line.startswith('data: '):
+                try:
+                    data = json.loads(line[6:])
+                    
+                    if provider == 'openai':
+                        if 'choices' in data and data['choices']:
+                            delta = data['choices'][0].get('delta', {})
+                            if 'content' in delta:
+                                yield delta['content']
+                                
+                    elif provider == 'anthropic':
+                        if data.get('type') == 'content_block_delta':
+                            yield data['delta']['text']
+                            
+                    else:  # Custom provider - assume OpenAI format
+                        if 'choices' in data and data['choices']:
+                            delta = data['choices'][0].get('delta', {})
+                            if 'content' in delta:
+                                yield delta['content']
+                                
+                except json.JSONDecodeError:
+                    continue
+    
+    def _extract_content(self, response: Dict, provider: str) -> str:
+        """Extract content from non-streaming response."""
+        if provider == 'openai':
+            return response['choices'][0]['message']['content']
+        elif provider == 'anthropic':
+            return response['content'][0]['text']
+        else:
+            # Assume OpenAI format for custom providers
+            return response['choices'][0]['message']['content']
+    
+    def _convert_to_anthropic_format(self, messages: List[Dict]) -> List[Dict]:
+        """Convert OpenAI message format to Anthropic format."""
+        # Anthropic expects a different format
+        converted = []
+        for msg in messages:
+            if msg['role'] == 'system':
+                # Anthropic handles system messages differently
+                continue
+            converted.append({
+                'role': 'user' if msg['role'] == 'user' else 'assistant',
+                'content': msg['content']
+            })
+        return converted
+```
+
+### 4. Chat Service (backend/app/services/chat_service.py)
+```python
+from typing import List, Dict, Optional, AsyncGenerator
+from uuid import UUID
+import json
+from datetime import datetime
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, update
+
+from app.models.chat import ChatSession, ChatMessage, ChatContext
+from app.services.llm_client import LLMClient
+from app.services.context_manager import ContextManager
+from app.services.document_retrieval import DocumentRetrieval
+from app.schemas.chat import ChatMessageCreate, ChatSettings
+
+class ChatService:
+    def __init__(self, db: AsyncSession):
+        self.db = db
+        self.llm_client = LLMClient()
+        self.context_manager = ContextManager(db)
+        self.doc_retrieval = DocumentRetrieval(db)
+    
+    async def create_session(self, user_id: int, title: Optional[str] = None) -> ChatSession:
+        """Create a new chat session."""
+        session = ChatSession(
+            user_id=user_id,
+            title=title or f"Chat {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+        )
+        self.db.add(session)
+        
+        # Create initial context
+        context = ChatContext(session_id=session.id)
+        self.db.add(context)
+        
+        await self.db.commit()
+        await self.db.refresh(session)
+        return session
+    
+    async def get_session(self, session_id: UUID, user_id: int) -> Optional[ChatSession]:
+        """Get a chat session by ID."""
+        result = await self.db.execute(
+            select(ChatSession).where(
+                ChatSession.id == session_id,
+                ChatSession.user_id == user_id
+            )
+        )
+        return result.scalar_one_or_none()
+    
+    async def send_message(
+        self,
+        session_id: UUID,
+        user_id: int,
+        content: str,
+        settings: ChatSettings,
+        context_options: Dict
+    ) -> AsyncGenerator[Dict, None]:
+        """Process and send a message to the LLM."""
+        
+        # Get session
+        session = await self.get_session(session_id, user_id)
+        if not session:
+            raise ValueError("Session not found")
+        
+        # Save user message
+        user_message = ChatMessage(
+            session_id=session_id,
+            role="user",
+            content=content,
+            model=settings.model
+        )
+        self.db.add(user_message)
+        await self.db.commit()
+        
+        # Prepare conversation history
+        messages = await self._prepare_messages(
+            session_id, 
+            content, 
+            settings, 
+            context_options
+        )
+        
+        # Get LLM response
+        assistant_message = ChatMessage(
+            session_id=session_id,
+            role="assistant",
+            model=settings.model
+        )
+        
+        full_response = ""
+        token_count = 0
+        
+        async for chunk in self.llm_client.complete(
+            messages=messages,
+            model=settings.model,
+            temperature=settings.temperature,
+            max_tokens=settings.max_tokens,
+            stream=True
+        ):
+            full_response += chunk
+            token_count = self.llm_client.count_tokens(full_response)
+            
+            # Yield chunk for streaming
+            yield {
+                'type': 'chunk',
+                'content': chunk,
+                'message_id': str(assistant_message.id)
+            }
+        
+        # Save assistant message
+        assistant_message.content = full_response
+        assistant_message.tokens = token_count
+        self.db.add(assistant_message)
+        
+        # Update session statistics
+        session.message_count += 2
+        session.total_tokens += token_count + self.llm_client.count_tokens(content)
+        session.updated_at = datetime.utcnow()
+        
+        # Extract and update context
+        context_update = await self.context_manager.extract_context(
+            full_response,
+            session_id
+        )
+        
+        if context_update:
+            yield {
+                'type': 'context_update',
+                'context': context_update
+            }
+        
+        await self.db.commit()
+        
+        # Final response
+        yield {
+            'type': 'complete',
+            'message_id': str(assistant_message.id),
+            'content': full_response,
+            'tokens': token_count
+        }
+    
+    async def _prepare_messages(
+        self,
+        session_id: UUID,
+        current_message: str,
+        settings: ChatSettings,
+        context_options: Dict
+    ) -> List[Dict[str, str]]:
+        """Prepare messages for LLM including context and history."""
+        
+        messages = []
+        
+        # Get context
+        context = await self.context_manager.get_context(session_id)
+        
+        # Prepare system message
+        system_prompt = await self._build_system_prompt(context, context_options)
+        messages.append({"role": "system", "content": system_prompt})
+        
+        # Add relevant document context if requested
+        if context_options.get('documentIds'):
+            doc_context = await self.doc_retrieval.get_relevant_chunks(
+                document_ids=context_options['documentIds'],
+                query=current_message,
+                max_chunks=10
+            )
+            
+            if doc_context:
+                messages.append({
+                    "role": "system",
+                    "content": f"Relevant document excerpts:\n{doc_context}"
+                })
+        
+        # Get conversation history (with token limit)
+        history = await self._get_conversation_history(
+            session_id,
+            max_tokens=8000 - self.llm_client.count_tokens(system_prompt)
+        )
+        messages.extend(history)
+        
+        # Add current message
+        messages.append({"role": "user", "content": current_message})
+        
+        return messages
+    
+    async def _build_system_prompt(
+        self, 
+        context: Optional[ChatContext], 
+        options: Dict
+    ) -> str:
+        """Build system prompt with context."""
+        
+        base_prompt = self.llm_client.config['system_prompts']['default']
+        
+        if context and context.summary:
+            prompt_template = self.llm_client.config['system_prompts']['with_context']
+            
+            tasks_str = "\n".join([
+                f"- [{t['status']}] {t['description']}" 
+                for t in context.tasks
+            ])
+            
+            base_prompt = prompt_template.format(
+                context_summary=context.summary,
+                tasks=tasks_str or "No active tasks",
+                documents=", ".join(context.relevant_documents) if context.relevant_documents else "None"
+            )
+        
+        # Add capability flags
+        if options.get('enableWebBrowsing'):
+            base_prompt += "\nYou have web browsing capabilities enabled."
+        
+        if options.get('enableDeepResearch'):
+            base_prompt += "\nDeep research mode is enabled - provide comprehensive analysis."
+        
+        return base_prompt
+    
+    async def _get_conversation_history(
+        self, 
+        session_id: UUID, 
+        max_tokens: int
+    ) -> List[Dict[str, str]]:
+        """Get conversation history within token limit."""
+        
+        result = await self.db.execute(
+            select(ChatMessage)
+            .where(ChatMessage.session_id == session_id)
+            .order_by(ChatMessage.timestamp.desc())
+            .limit(50)  # Get last 50 messages
+        )
+        messages = result.scalars().all()
+        
+        # Reverse to get chronological order
+        messages = list(reversed(messages))
+        
+        # Trim to fit token limit
+        history = []
+        total_tokens = 0
+        
+        for msg in messages[:-1]:  # Exclude the current message
+            msg_tokens = self.llm_client.count_tokens(msg.content)
+            if total_tokens + msg_tokens > max_tokens:
+                break
+            
+            history.append({
+                "role": msg.role,
+                "content": msg.content
+            })
+            total_tokens += msg_tokens
+        
+        return history
+```
+
+### 5. Context Manager (backend/app/services/context_manager.py)
+```python
+import re
+import json
+from typing import Dict, List, Optional
+from uuid import UUID
+from datetime import datetime
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+
+from app.models.chat import ChatContext
+
+class ContextManager:
+    def __init__(self, db: AsyncSession):
+        self.db = db
+        
+    async def get_context(self, session_id: UUID) -> Optional[ChatContext]:
+        """Get context for a session."""
+        result = await self.db.execute(
+            select(ChatContext).where(ChatContext.session_id == session_id)
+        )
+        return result.scalar_one_or_none()
+    
+    async def extract_context(
+        self, 
+        llm_response: str, 
+        session_id: UUID
+    ) -> Optional[Dict]:
+        """Extract context updates from LLM response."""
+        
+        context = await self.get_context(session_id)
+        if not context:
+            return None
+        
+        updates = {}
+        
+        # Extract tasks (look for bullet points or numbered lists)
+        new_tasks = self._extract_tasks(llm_response)
+        if new_tasks:
+            existing_tasks = context.tasks or []
+            # Add new tasks that don't already exist
+            for task in new_tasks:
+                if not any(t['description'] == task['description'] for t in existing_tasks):
+                    task['id'] = f"task-{datetime.now().timestamp()}"
+                    task['createdAt'] = datetime.now().isoformat()
+                    existing_tasks.append(task)
+            
+            updates['tasks'] = existing_tasks
+        
+        # Extract goal statements
+        goal = self._extract_goal(llm_response)
+        if goal:
+            updates['current_goal'] = goal
+        
+        # Update summary if significant new information
+        if len(llm_response) > 200:  # Only for substantial responses
+            summary = await self._generate_summary(llm_response, context.summary)
+            if summary:
+                updates['summary'] = summary
+        
+        # Update context if there are changes
+        if updates:
+            for key, value in updates.items():
+                setattr(context, key, value)
+            context.updated_at = datetime.utcnow()
+            await self.db.commit()
+            
+            return {
+                'sessionId': str(session_id),
+                'summary': context.summary,
+                'currentGoal': context.current_goal,
+xcalendar                'tasks': context.tasks,
+                'updatedAt': context.updated_at.isoformat()
+            }
+        
+        return None
+    
+    def _extract_tasks(self, text: str) -> List[Dict]:
+        """Extract tasks from text."""
+        tasks = []
+        
+        # Look for common task patterns
+        patterns = [
+            r'(?:^|\n)\s*[-•]\s+(.+?)(?:\n|$)',  # Bullet points
+            r'(?:^|\n)\s*\d+\.\s+(.+?)(?:\n|$)',  # Numbered lists
+            r'(?:TODO|Task|Action):\s*(.+?)(?:\n|$)',  # Explicit markers
+        ]
+        
+        for pattern in patterns:
+            matches = re.findall(pattern, text, re.MULTILINE | re.IGNORECASE)
+            for match in matches:
+                task_text = match.strip()
+                if len(task_text) > 10 and len(task_text) < 200:  # Reasonable task length
+                    tasks.append({
+                        'description': task_text,
+                        'status': 'pending',
+                        'priority': self._determine_priority(task_text)
+                    })
+        
+        return tasks[:10]  # Limit to 10 tasks
+    
+    def _extract_goal(self, text: str) -> Optional[str]:
+        """Extract goal or objective from text."""
+        
+        # Look for goal indicators
+        patterns = [
+            r'(?:goal|objective|aim|purpose)(?:\s+is)?:\s*(.+?)(?:\n|$)',
+            r'(?:need to|should|must|will)\s+(.+?)(?:\n|$)',
+            r'(?:^|\n)(?:The main|Primary|Key)\s+(?:goal|objective)\s+is\s+(.+?)(?:\n|$)'
+        ]
+        
+        for pattern in patterns:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                goal = match.group(1).strip()
+                if len(goal) > 20 and len(goal) < 200:
+                    return goal
+        
+        return None
+    
+    def _determine_priority(self, task_text: str) -> str:
+        """Determine task priority based on keywords."""
+        
+        high_priority_keywords = ['urgent', 'critical', 'immediately', 'asap', 'priority']
+        low_priority_keywords = ['eventually', 'consider', 'maybe', 'optional', 'nice to have']
+        
+        task_lower = task_text.lower()
+        
+        if any(keyword in task_lower for keyword in high_priority_keywords):
+            return 'high'
+        elif any(keyword in task_lower for keyword in low_priority_keywords):
+            return 'low'
+        else:
+            return 'medium'
+    
+    async def _generate_summary(
+        self, 
+        new_content: str, 
+        existing_summary: Optional[str]
+    ) -> Optional[str]:
+        """Generate updated summary (simplified version)."""
+        
+        # For now, just extract the first substantial paragraph
+        # In production, you might want to use the LLM to generate a proper summary
+        
+        paragraphs = new_content.split('\n\n')
+        for para in paragraphs:
+            if len(para) > 50 and len(para) < 500:
+                if existing_summary and para in existing_summary:
+                    continue
+                return para
+        
+        return None
+    
+    async def update_context(
+        self,
+        session_id: UUID,
+        updates: Dict
+    ) -> ChatContext:
+        """Manually update context."""
+        
+        context = await self.get_context(session_id)
+        if not context:
+            raise ValueError("Context not found")
+        
+        for key, value in updates.items():
+            if hasattr(context, key):
+                setattr(context, key, value)
+        
+        context.updated_at = datetime.utcnow()
+        await self.db.commit()
+        await self.db.refresh(context)
+        
+        return context
+```
+
+### 6. Chat API Endpoints (backend/app/api/chat.py)
+```python
+from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import StreamingResponse
+from sqlalchemy.ext.asyncio import AsyncSession
+from typing import List, Optional
+from uuid import UUID
+import json
+
+from app.core.database import get_async_session
+from app.core.security import get_current_user
+from app.models import User
+from app.schemas.chat import (
+    ChatSessionCreate,
+    ChatSessionResponse,
+    ChatMessageCreate,
+    ChatMessageResponse,
+    ChatSettings,
+    ContextUpdate
+)
+from app.services.chat_service import ChatService
+from app.core.websocket import manager
+
+router = APIRouter()
+
+@router.post("/sessions", response_model=ChatSessionResponse)
+async def create_chat_session(
+    session_data: ChatSessionCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_async_session)
+):
+    """Create a new chat session."""
+    service = ChatService(db)
+    session = await service.create_session(
+        user_id=current_user.id,
+        title=session_data.title
+    )
+    return session
+
+@router.get("/sessions", response_model=List[ChatSessionResponse])
+async def get_chat_sessions(
+    status: Optional[str] = Query(None),
+    limit: int = Query(20, le=100),
+    offset: int = Query(0),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_async_session)
+):
+    """Get user's chat sessions."""
+    service = ChatService(db)
+    sessions = await service.get_user_sessions(
+        user_id=current_user.id,
+        status=status,
+        limit=limit,
+        offset=offset
+    )
+    return sessions
+
+@router.get("/sessions/{session_id}", response_model=ChatSessionResponse)
+async def get_chat_session(
+    session_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_async_session)
+):
+    """Get a specific chat session with messages."""
+    service = ChatService(db)
+    session = await service.get_session_with_messages(
+        session_id=session_id,
+        user_id=current_user.id
+    )
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return session
+
+@router.post("/sessions/{session_id}/messages")
+async def send_message(
+    session_id: UUID,
+    message_data: ChatMessageCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_async_session)
+):
+    """Send a message and get streaming response."""
+    service = ChatService(db)
+    
+    async def generate():
+        try:
+            async for chunk in service.send_message(
+                session_id=session_id,
+                user_id=current_user.id,
+                content=message_data.content,
+                settings=message_data.settings,
+                context_options=message_data.context_options
+            ):
+                # Send as Server-Sent Events format
+                yield f"data: {json.dumps(chunk)}\n\n"
+                
+                # Also broadcast to WebSocket for real-time updates
+                if chunk['type'] == 'context_update':
+                    await manager.send_to_user(
+                        str(current_user.id),
+                        'context_update',
+                        chunk['context']
+                    )
+        except Exception as e:
+            error_chunk = {
+                'type': 'error',
+                'error': str(e)
+            }
+            yield f"data: {json.dumps(error_chunk)}\n\n"
+    
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no"  # Disable Nginx buffering
+        }
+    )
+
+@router.get("/sessions/{session_id}/context")
+async def get_session_context(
+    session_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_async_session)
+):
+    """Get the current context for a session."""
+    service = ChatService(db)
+    context = await service.get_session_context(
+        session_id=session_id,
+        user_id=current_user.id
+    )
+    if not context:
+        raise HTTPException(status_code=404, detail="Context not found")
+    return context
+
+@router.patch("/sessions/{session_id}/context")
+async def update_session_context(
+    session_id: UUID,
+    context_update: ContextUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_async_session)
+):
+    """Manually update session context."""
+    service = ChatService(db)
+    
+    # Verify session ownership
+    session = await service.get_session(session_id, current_user.id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    updated_context = await service.update_context(
+        session_id=session_id,
+        updates=context_update.dict(exclude_unset=True)
+    )
+    
+    # Broadcast update
+    await manager.send_to_user(
+        str(current_user.id),
+        'context_update',
+        updated_context
+    )
+    
+    return updated_context
+
+@router.delete("/sessions/{session_id}")
+async def delete_chat_session(
+    session_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_async_session)
+):
+    """Delete a chat session."""
+    service = ChatService(db)
+    success = await service.delete_session(
+        session_id=session_id,
+        user_id=current_user.id
+    )
+    if not success:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return {"status": "deleted"}
+
+@router.post("/sessions/{session_id}/archive")
+async def archive_chat_session(
+    session_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_async_session)
+):
+    """Archive a chat session."""
+    service = ChatService(db)
+    session = await service.archive_session(
+        session_id=session_id,
+        user_id=current_user.id
+    )
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return session
