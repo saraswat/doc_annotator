@@ -1,4 +1,4 @@
-import { ChatSession, ChatMessage, ChatMessageCreate, StreamingResponse } from '../types/chat';
+import { ChatSession, ChatMessage, ChatMessageCreate, StreamingResponse, MessageFeedback } from '../types/chat';
 import apiService from './api';
 
 class ChatService {
@@ -88,6 +88,26 @@ class ChatService {
   async updateContext(sessionId: string, updates: any): Promise<any> {
     const response = await apiService.patch(`/chat/sessions/${sessionId}/context`, updates);
     return response.data;
+  }
+
+  async submitFeedback(messageId: string, feedbackType: 'thumbs_up' | 'thumbs_down', messageOrder: number): Promise<MessageFeedback> {
+    const response = await apiService.post(`/chat/messages/${messageId}/feedback`, {
+      feedback_type: feedbackType,
+      message_order: messageOrder
+    });
+    return response.data;
+  }
+
+  async getFeedback(messageId: string): Promise<MessageFeedback | null> {
+    try {
+      const response = await apiService.get(`/chat/messages/${messageId}/feedback`);
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        return null;
+      }
+      throw error;
+    }
   }
 }
 

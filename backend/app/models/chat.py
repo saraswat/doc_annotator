@@ -50,6 +50,28 @@ class ChatMessage(Base):
     
     # Relationships
     session = relationship("ChatSession", back_populates="messages")
+    feedback = relationship("MessageFeedback", back_populates="message", uselist=False, cascade="all, delete-orphan")
+
+class MessageFeedback(Base):
+    __tablename__ = "message_feedback"
+    
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    message_id = Column(String(36), ForeignKey("chat_messages.id"), unique=True, nullable=False)
+    session_id = Column(String(36), ForeignKey("chat_sessions.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    
+    # Feedback data
+    feedback_type = Column(String(20), nullable=False)  # thumbs_up, thumbs_down
+    message_order = Column(Integer, nullable=False)  # Position of LLM response in session (1st, 2nd, etc.)
+    
+    # Timestamps
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    message = relationship("ChatMessage", back_populates="feedback")
+    session = relationship("ChatSession")
+    user = relationship("User")
 
 class ChatContext(Base):
     __tablename__ = "chat_contexts"

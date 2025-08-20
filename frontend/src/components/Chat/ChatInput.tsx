@@ -80,8 +80,13 @@ const ChatInput: React.FC<ChatInputProps> = ({
             icon={<WebIcon />} 
             label="Web Browsing" 
             size="small" 
-            color="primary"
-            onDelete={() => onSettingsChange({ webBrowsing: false })}
+            disabled={true}
+            sx={{
+              opacity: 0.5,
+              '& .MuiChip-deleteIcon': {
+                display: 'none'
+              }
+            }}
           />
         )}
         {settings.deepResearch && (
@@ -89,8 +94,13 @@ const ChatInput: React.FC<ChatInputProps> = ({
             icon={<ResearchIcon />} 
             label="Deep Research" 
             size="small" 
-            color="secondary"
-            onDelete={() => onSettingsChange({ deepResearch: false })}
+            disabled={true}
+            sx={{
+              opacity: 0.5,
+              '& .MuiChip-deleteIcon': {
+                display: 'none'
+              }
+            }}
           />
         )}
         {settings.includeDocuments.length > 0 && (
@@ -139,28 +149,34 @@ const ChatInput: React.FC<ChatInputProps> = ({
             </Tooltip>
           )}
 
-          {/* Web Browsing Toggle */}
-          <Tooltip title="Toggle Web Browsing">
-            <IconButton 
-              color={settings.webBrowsing ? "primary" : "default"}
-              onClick={() => onSettingsChange({ 
-                webBrowsing: !settings.webBrowsing 
-              })}
-            >
-              <WebIcon />
-            </IconButton>
+          {/* Web Browsing Toggle - Disabled/Greyed Out */}
+          <Tooltip title="Web Browsing (Coming Soon)">
+            <span>
+              <IconButton 
+                disabled={true}
+                sx={{
+                  color: 'rgba(0, 0, 0, 0.26)',
+                  cursor: 'not-allowed'
+                }}
+              >
+                <WebIcon />
+              </IconButton>
+            </span>
           </Tooltip>
 
-          {/* Deep Research Toggle */}
-          <Tooltip title="Toggle Deep Research">
-            <IconButton 
-              color={settings.deepResearch ? "secondary" : "default"}
-              onClick={() => onSettingsChange({ 
-                deepResearch: !settings.deepResearch 
-              })}
-            >
-              <ResearchIcon />
-            </IconButton>
+          {/* Deep Research Toggle - Disabled/Greyed Out */}
+          <Tooltip title="Deep Research (Coming Soon)">
+            <span>
+              <IconButton 
+                disabled={true}
+                sx={{
+                  color: 'rgba(0, 0, 0, 0.26)',
+                  cursor: 'not-allowed'
+                }}
+              >
+                <ResearchIcon />
+              </IconButton>
+            </span>
           </Tooltip>
 
           {/* Settings */}
@@ -262,20 +278,24 @@ const ChatInput: React.FC<ChatInputProps> = ({
               control={
                 <Switch
                   checked={settings.webBrowsing}
+                  disabled={true}
                   onChange={(e) => onSettingsChange({ webBrowsing: e.target.checked })}
                 />
               }
-              label="Web Browsing"
+              label="Web Browsing (Coming Soon)"
+              sx={{ opacity: 0.5 }}
             />
 
             <FormControlLabel
               control={
                 <Switch
                   checked={settings.deepResearch}
+                  disabled={true}
                   onChange={(e) => onSettingsChange({ deepResearch: e.target.checked })}
                 />
               }
-              label="Deep Research Mode"
+              label="Deep Research Mode (Coming Soon)"
+              sx={{ opacity: 0.5 }}
             />
           </Stack>
         </Box>

@@ -11,12 +11,14 @@ from datetime import datetime
 from app.core.database import get_async_session
 from app.core.security import get_current_user
 from app.models import User
-from app.models.chat import ChatSession, ChatMessage, ChatContext
+from app.models.chat import ChatSession, ChatMessage, ChatContext, MessageFeedback
 from app.schemas.chat import (
     ChatSessionCreate,
     ChatSessionResponse,
     ChatMessageCreate,
     ChatMessageResponse,
+    MessageFeedbackCreate,
+    MessageFeedbackResponse,
     ContextUpdate,
     ContextResponse
 )
@@ -407,3 +409,103 @@ async def delete_chat_session(
     await db.commit()
     
     return {"status": "deleted"}
+
+@router.post("/messages/{message_id}/feedback", response_model=MessageFeedbackResponse)
+async def submit_message_feedback(
+    message_id: UUID,
+    feedback_data: MessageFeedbackCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_async_session)
+):
+    """Submit feedback for a specific message."""
+    # First verify the message exists and belongs to the user
+    result = await db.execute(
+        select(ChatMessage)
+        .join(ChatSession)
+        .where(
+            ChatMessage.id == str(message_id),
+            ChatSession.user_id == current_user.id,
+            ChatMessage.role == "assistant"  # Only allow feedback on assistant messages
+        )
+    )
+    message = result.scalar_one_or_none()
+    
+    if not message:
+        raise HTTPException(status_code=404, detail="Message not found or not eligible for feedback")
+    
+    # Check if feedback already exists for this message
+    existing_feedback_result = await db.execute(
+        select(MessageFeedback).where(MessageFeedback.message_id == str(message_id))
+    )
+    existing_feedback = existing_feedback_result.scalar_one_or_none()
+    
+    if existing_feedback:
+        # Update existing feedback
+        existing_feedback.feedback_type = feedback_data.feedback_type
+        existing_feedback.updated_at = datetime.utcnow()
+        feedback = existing_feedback
+    else:
+        # Create new feedback
+        feedback = MessageFeedback(
+            message_id=str(message_id),
+            session_id=message.session_id,
+            user_id=current_user.id,
+            feedback_type=feedback_data.feedback_type,
+            message_order=feedback_data.message_order
+        )
+        db.add(feedback)
+    
+    await db.commit()
+    await db.refresh(feedback)
+    
+    return MessageFeedbackResponse(
+        id=feedback.id,
+        message_id=feedback.message_id,
+        session_id=feedback.session_id,
+        user_id=feedback.user_id,
+        feedback_type=feedback.feedback_type,
+        message_order=feedback.message_order,
+        created_at=feedback.created_at,
+        updated_at=feedback.updated_at
+    )
+
+@router.get("/messages/{message_id}/feedback", response_model=Optional[MessageFeedbackResponse])
+async def get_message_feedback(
+    message_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_async_session)
+):
+    """Get feedback for a specific message."""
+    # Verify the message exists and belongs to the user
+    result = await db.execute(
+        select(ChatMessage)
+        .join(ChatSession)
+        .where(
+            ChatMessage.id == str(message_id),
+            ChatSession.user_id == current_user.id
+        )
+    )
+    message = result.scalar_one_or_none()
+    
+    if not message:
+        raise HTTPException(status_code=404, detail="Message not found")
+    
+    # Get feedback
+    feedback_result = await db.execute(
+        select(MessageFeedback).where(MessageFeedback.message_id == str(message_id))
+    )
+    feedback = feedback_result.scalar_one_or_none()
+    
+    if not feedback:
+        return None
+    
+    return MessageFeedbackResponse(
+        id=feedback.id,
+        message_id=feedback.message_id,
+        session_id=feedback.session_id,
+        user_id=feedback.user_id,
+        feedback_type=feedback.feedback_type,
+        message_order=feedback.message_order,
+        created_at=feedback.created_at,
+        updated_at=feedback.updated_at
+    )

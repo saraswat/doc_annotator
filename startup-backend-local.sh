@@ -54,7 +54,7 @@ echo "Press Ctrl+C to stop the server"
 echo ""
 
 # Start uvicorn with local development settings
-python -m uvicorn app.main:app \
+python -m uvicorn main:app \
     --host localhost \
     --port 8000 \
     --reload \

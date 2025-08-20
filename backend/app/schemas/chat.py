@@ -54,6 +54,24 @@ class ChatMessageResponse(BaseModel):
     message_metadata: Dict[str, Any] = {}
     document_references: List[Dict[str, Any]] = []
     annotation_references: List[str] = []
+    feedback: Optional['MessageFeedbackResponse'] = None
+
+    class Config:
+        from_attributes = True
+
+class MessageFeedbackCreate(BaseModel):
+    feedback_type: str  # thumbs_up, thumbs_down
+    message_order: int
+
+class MessageFeedbackResponse(BaseModel):
+    id: UUID
+    message_id: UUID
+    session_id: UUID
+    user_id: int
+    feedback_type: str
+    message_order: int
+    created_at: datetime
+    updated_at: datetime
 
     class Config:
         from_attributes = True

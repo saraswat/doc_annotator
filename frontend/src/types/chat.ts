@@ -27,6 +27,18 @@ export interface ChatMessage {
     annotations?: string[];
   };
   status: 'sending' | 'sent' | 'error';
+  feedback?: MessageFeedback;
+}
+
+export interface MessageFeedback {
+  id: string;
+  messageId: string;
+  sessionId: string;
+  userId: number;
+  feedbackType: 'thumbs_up' | 'thumbs_down';
+  messageOrder: number;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface ChatSettings {
