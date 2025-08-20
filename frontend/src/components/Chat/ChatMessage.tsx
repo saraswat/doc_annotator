@@ -18,7 +18,7 @@ import {
   ThumbDown as ThumbDownIcon,
   ContentCopy as CopyIcon
 } from '@mui/icons-material';
-import { ChatMessage as ChatMessageType } from '../../types/chat';
+import { ChatMessage as ChatMessageType, MessageFeedback } from '../../types/chat';
 import { format } from 'date-fns';
 import chatService from '../../services/chatService';
 
@@ -26,7 +26,7 @@ interface ChatMessageProps {
   message: ChatMessageType;
   messageOrder?: number; // Position of LLM response in session (for feedback)
   onRetry?: () => void;
-  onFeedbackChange?: () => void;
+  onFeedbackChange?: (feedback: MessageFeedback) => void;
 }
 
 const ChatMessage: React.FC<ChatMessageProps> = ({ message, messageOrder, onRetry, onFeedbackChange }) => {
@@ -45,7 +45,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, messageOrder, onRetr
     try {
       const newFeedback = await chatService.submitFeedback(message.id, 'thumbs_up', messageOrder);
       setFeedback(newFeedback);
-      if (onFeedbackChange) onFeedbackChange();
+      if (onFeedbackChange) onFeedbackChange(newFeedback);
     } catch (error) {
       console.error('Failed to submit feedback:', error);
     }
@@ -57,7 +57,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, messageOrder, onRetr
     try {
       const newFeedback = await chatService.submitFeedback(message.id, 'thumbs_down', messageOrder);
       setFeedback(newFeedback);
-      if (onFeedbackChange) onFeedbackChange();
+      if (onFeedbackChange) onFeedbackChange(newFeedback);
     } catch (error) {
       console.error('Failed to submit feedback:', error);
     }

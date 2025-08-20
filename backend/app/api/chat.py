@@ -118,13 +118,23 @@ async def get_chat_session(
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
     
-    # Get messages
+    # Get messages with feedback
     result = await db.execute(
         select(ChatMessage)
         .where(ChatMessage.session_id == str(session_id))
         .order_by(ChatMessage.timestamp)
     )
     messages = result.scalars().all()
+    
+    # Load feedback for each message
+    message_feedbacks = {}
+    for message in messages:
+        feedback_result = await db.execute(
+            select(MessageFeedback).where(MessageFeedback.message_id == str(message.id))
+        )
+        feedback = feedback_result.scalar_one_or_none()
+        if feedback:
+            message_feedbacks[str(message.id)] = feedback
     
     # Convert to response format manually to avoid lazy loading issues
     return ChatSessionResponse(
@@ -149,7 +159,17 @@ async def get_chat_session(
                 model=msg.model,
                 message_metadata=msg.message_metadata or {},
                 document_references=msg.document_references or [],
-                annotation_references=msg.annotation_references or []
+                annotation_references=msg.annotation_references or [],
+                feedback=MessageFeedbackResponse(
+                    id=message_feedbacks[str(msg.id)].id,
+                    message_id=message_feedbacks[str(msg.id)].message_id,
+                    session_id=message_feedbacks[str(msg.id)].session_id,
+                    user_id=message_feedbacks[str(msg.id)].user_id,
+                    feedback_type=message_feedbacks[str(msg.id)].feedback_type,
+                    message_order=message_feedbacks[str(msg.id)].message_order,
+                    created_at=message_feedbacks[str(msg.id)].created_at,
+                    updated_at=message_feedbacks[str(msg.id)].updated_at
+                ) if str(msg.id) in message_feedbacks else None
             ) for msg in messages
         ]
     )

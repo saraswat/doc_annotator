@@ -251,9 +251,15 @@ const ChatView: React.FC<ChatViewProps> = ({ sessionId: propSessionId, onNewSess
                     message={message}
                     messageOrder={messageOrder}
                     onRetry={() => handleSendMessage(message.content)}
-                    onFeedbackChange={() => {
-                      // Optionally refresh messages or update UI
-                      console.log('Feedback changed for message:', message.id);
+                    onFeedbackChange={(newFeedback) => {
+                      // Update the message in the state with the new feedback
+                      setMessages(prevMessages => 
+                        prevMessages.map(m => 
+                          m.id === message.id 
+                            ? { ...m, feedback: newFeedback }
+                            : m
+                        )
+                      );
                     }}
                   />
                 );
