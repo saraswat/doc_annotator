@@ -169,16 +169,53 @@ cp ssl/cert.pem frontend/ssl/
 #### Production Certificates
 Use Let's Encrypt, your cloud provider's certificate manager, or purchase certificates from a CA.
 
+## OAuth Login Behavior
+
+### Automatic OAuth Disabling for Intranet Deployments
+
+When using nginx SSL termination (`USE_NGINX_SSL=true`), OAuth login is automatically disabled because:
+
+1. **Intranet Assumption**: Nginx SSL termination typically indicates internal/intranet deployment
+2. **OAuth Requirements**: OAuth providers (Google, etc.) require public internet access
+3. **Security**: Internal networks may not allow external OAuth callbacks
+
+### Login Methods by Deployment Type
+
+| Deployment Type | OAuth Login | Password Login | Primary Use Case |
+|----------------|-------------|----------------|------------------|
+| **Local Development** | ✅ Enabled | ✅ Enabled | Developer testing |
+| **Public Internet** | ✅ Enabled | ✅ Enabled | External users |
+| **Intranet (Nginx)** | ❌ Disabled | ✅ Enabled | Internal company users |
+
+### Environment Variables
+
+The frontend automatically sets these based on deployment type:
+
+```bash
+# Public/Direct SSL deployment
+REACT_APP_DISABLE_OAUTH=false
+REACT_APP_DEPLOYMENT_TYPE=public
+
+# Intranet/Nginx SSL deployment  
+REACT_APP_DISABLE_OAUTH=true
+REACT_APP_DEPLOYMENT_TYPE=intranet
+
+# Local development
+REACT_APP_DISABLE_OAUTH=false
+REACT_APP_DEPLOYMENT_TYPE=local
+```
+
 ## Configuration Differences
 
-| Feature | Local Scripts | Production Scripts |
-|---------|---------------|-------------------|
-| Protocol | HTTP | HTTPS (required) |
-| SSL Certificates | Not required | Required |
-| Host Configuration | Fixed to localhost | Environment variable |
-| CORS Origins | localhost:3000 | Based on FRONTEND_HOST |
-| Error Handling | Warnings only | Exits on missing SSL |
-| Target Use Case | Development | Production deployment |
+| Feature | Local Scripts | Production Scripts (Direct SSL) | Production Scripts (Nginx SSL) |
+|---------|---------------|----------------------------------|-------------------------------|
+| Protocol | HTTP | HTTPS (required) | HTTP internally, HTTPS via nginx |
+| SSL Certificates | Not required | Required | Not required (nginx handles) |
+| Host Configuration | Fixed to localhost | Environment variable | Environment variable |
+| CORS Origins | localhost:3000 | Based on FRONTEND_HOST | Based on FRONTEND_HOST |
+| OAuth Login | Enabled | Enabled | **Disabled** (intranet) |
+| Error Handling | Warnings only | Exits on missing SSL | Exits on nginx connectivity |
+| Target Use Case | Development | Public internet deployment | Intranet/private network |
 
 ## Troubleshooting
 

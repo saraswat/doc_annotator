@@ -18,7 +18,10 @@ import toast from 'react-hot-toast';
 
 const LoginPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
-  const [loginMode, setLoginMode] = useState<'oauth' | 'password'>('oauth');
+  // Check environment for OAuth availability (disabled in intranet/nginx deployments)
+  const isOAuthDisabled = process.env.REACT_APP_DISABLE_OAUTH === 'true';
+  const deploymentType = process.env.REACT_APP_DEPLOYMENT_TYPE || 'public';
+  const [loginMode, setLoginMode] = useState<'oauth' | 'password'>(isOAuthDisabled ? 'password' : 'oauth');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -145,10 +148,16 @@ const LoginPage: React.FC = () => {
           Document Annotation System
         </Typography>
         
-        <Typography variant="body1" sx={{ mb: 4, opacity: 0.9 }}>
+        <Typography variant="body1" sx={{ mb: 2, opacity: 0.9 }}>
           A professional tool for collaborative document review and annotation.
           Sign in to start annotating documents with your team.
         </Typography>
+
+        {deploymentType === 'intranet' && (
+          <Typography variant="body2" sx={{ mb: 3, opacity: 0.8, fontStyle: 'italic' }}>
+            Internal network deployment - OAuth login disabled
+          </Typography>
+        )}
 
         {error && (
           <Alert severity="error" sx={{ mb: 3 }}>
@@ -186,7 +195,7 @@ const LoginPage: React.FC = () => {
           </Alert>
         )}
 
-        {!isRedirecting && loginMode === 'oauth' ? (
+        {!isRedirecting && loginMode === 'oauth' && !isOAuthDisabled ? (
           <Box>
             <Button
               variant="contained"
@@ -281,24 +290,26 @@ const LoginPage: React.FC = () => {
               {isLoading ? 'Signing in...' : 'Sign in with Password'}
             </Button>
             
-            <Box sx={{ mt: 2 }}>
-              <Divider sx={{ color: 'rgba(255,255,255,0.5)', mb: 2 }}>OR</Divider>
-              <Button
-                variant="outlined"
-                startIcon={<GoogleIcon />}
-                onClick={() => setLoginMode('oauth')}
-                sx={{
-                  borderColor: 'white',
-                  color: 'white',
-                  '&:hover': {
-                    borderColor: 'rgba(255,255,255,0.8)',
-                    bgcolor: 'rgba(255,255,255,0.1)'
-                  }
-                }}
-              >
-                Sign in with Google
-              </Button>
-            </Box>
+            {!isOAuthDisabled && (
+              <Box sx={{ mt: 2 }}>
+                <Divider sx={{ color: 'rgba(255,255,255,0.5)', mb: 2 }}>OR</Divider>
+                <Button
+                  variant="outlined"
+                  startIcon={<GoogleIcon />}
+                  onClick={() => setLoginMode('oauth')}
+                  sx={{
+                    borderColor: 'white',
+                    color: 'white',
+                    '&:hover': {
+                      borderColor: 'rgba(255,255,255,0.8)',
+                      bgcolor: 'rgba(255,255,255,0.1)'
+                    }
+                  }}
+                >
+                  Sign in with Google
+                </Button>
+              </Box>
+            )}
           </Box>
         ) : null}
 

@@ -22,6 +22,10 @@ cat > .env.local << EOF
 REACT_APP_API_URL=http://localhost:8000/api
 REACT_APP_ENVIRONMENT=development
 
+# OAuth configuration (enabled for local development)
+REACT_APP_DISABLE_OAUTH=false
+REACT_APP_DEPLOYMENT_TYPE=local
+
 # Disable HTTPS for local development
 HTTPS=false
 HOST=localhost

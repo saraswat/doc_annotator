@@ -48,10 +48,15 @@ if [ "$USE_NGINX_SSL" = "true" ]; then
     # Nginx handles SSL - API calls go to public HTTPS endpoints
     export REACT_APP_API_URL="https://$BACKEND_HOST/api"
     export REACT_APP_WS_URL="wss://$BACKEND_HOST"
+    # Disable OAuth for intranet deployments (nginx SSL termination typically means intranet)
+    export REACT_APP_DISABLE_OAUTH="true"
+    export REACT_APP_DEPLOYMENT_TYPE="intranet"
 else
     # Direct connection to backend (with port)
     export REACT_APP_API_URL="https://$BACKEND_HOST:$BACKEND_PORT/api"
     export REACT_APP_WS_URL="wss://$BACKEND_HOST:$BACKEND_PORT"
+    export REACT_APP_DISABLE_OAUTH="false"
+    export REACT_APP_DEPLOYMENT_TYPE="public"
 fi
 
 export PORT="$FRONTEND_PORT"
