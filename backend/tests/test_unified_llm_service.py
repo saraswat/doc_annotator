@@ -53,9 +53,62 @@ default_timeout: 30
 
 
 @pytest.fixture
+def intranet_llms_yaml():
+    """Create a temporary YAML config file for intranet testing"""
+    yaml_content = """
+providers:
+  test_intranet:
+    type: "openai"
+    base_url: "http://127.0.0.1:4000"
+    api_key_env: "PROXY_API_KEY"
+    max_tokens_param: "max_completion_tokens"
+    intranet: true
+    
+  test_external:
+    type: "openai"
+    base_url: "https://api.openai.com/v1"
+    api_key_env: "EXTERNAL_API_KEY"
+    max_tokens_param: "max_completion_tokens"
+    intranet: false
+
+models:
+  intranet_model:
+    technical_name: "intranet-model"
+    common_name: "Intranet Model"
+    provider: "test_intranet"
+    default_temperature: 0.7
+    default_max_tokens: 2000
+    
+  external_model:
+    technical_name: "external-model"
+    common_name: "External Model"
+    provider: "test_external"
+    default_temperature: 0.7
+    default_max_tokens: 2000
+
+default_model: "intranet_model"
+default_timeout: 30
+intranet_mode: true
+"""
+    
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+        f.write(yaml_content)
+        temp_path = f.name
+    
+    yield temp_path
+    os.unlink(temp_path)
+
+
+@pytest.fixture
 def llm_service(sample_llms_yaml):
     """Create UnifiedLLMService with test config"""
     return UnifiedLLMService(config_path=sample_llms_yaml)
+
+
+@pytest.fixture
+def intranet_llm_service(intranet_llms_yaml):
+    """Create UnifiedLLMService with intranet test config"""
+    return UnifiedLLMService(config_path=intranet_llms_yaml)
 
 
 class TestUnifiedLLMService:
@@ -273,3 +326,94 @@ class TestProviderConfig:
         assert config.base_url == "https://api.openai.com/v1"
         assert config.api_key_env == "OPENAI_API_KEY"
         assert config.max_tokens_param == "max_completion_tokens"
+
+
+class TestIntranetMode:
+    
+    def test_intranet_mode_configuration(self, intranet_llm_service):
+        """Test that intranet mode is properly configured"""
+        assert intranet_llm_service.intranet_mode is True
+        
+        # Check that intranet provider has correct configuration
+        intranet_provider = intranet_llm_service.providers["test_intranet"]
+        assert intranet_provider.intranet is True
+        
+        external_provider = intranet_llm_service.providers["test_external"]
+        assert external_provider.intranet is False
+    
+    def test_intranet_provider_availability(self, intranet_llm_service):
+        """Test provider availability in intranet mode"""
+        intranet_provider = intranet_llm_service.providers["test_intranet"]
+        external_provider = intranet_llm_service.providers["test_external"]
+        
+        # In intranet mode, intranet providers should be available without API keys
+        assert intranet_llm_service._is_provider_available(intranet_provider) is True
+        
+        # External providers still need API keys even in intranet mode
+        assert intranet_llm_service._is_provider_available(external_provider) is False
+        
+        # But external providers work when API key is provided
+        with patch.dict(os.environ, {"EXTERNAL_API_KEY": "test-key"}):
+            assert intranet_llm_service._is_provider_available(external_provider) is True
+    
+    @pytest.mark.asyncio
+    async def test_intranet_available_models(self, intranet_llm_service):
+        """Test that intranet models are available without API keys"""
+        models = await intranet_llm_service.get_available_models()
+        
+        # Should have intranet model available (no API key needed)
+        model_ids = [m["id"] for m in models]
+        assert "intranet_model" in model_ids
+        
+        # External model should not be available (no API key set)
+        assert "external_model" not in model_ids
+        
+        # When external API key is set, external model becomes available too
+        with patch.dict(os.environ, {"EXTERNAL_API_KEY": "test-key"}):
+            models_with_key = await intranet_llm_service.get_available_models()
+            model_ids_with_key = [m["id"] for m in models_with_key]
+            assert "intranet_model" in model_ids_with_key
+            assert "external_model" in model_ids_with_key
+    
+    @patch.dict(os.environ, {"INTRANET_MODE": "false"})
+    def test_environment_variable_override(self, intranet_llms_yaml):
+        """Test that INTRANET_MODE environment variable overrides config"""
+        # Create service with environment variable set to false
+        service = UnifiedLLMService(config_path=intranet_llms_yaml)
+        
+        # Should be False due to environment variable override
+        assert service.intranet_mode is False
+        
+        # Now intranet provider should not be available without API key
+        intranet_provider = service.providers["test_intranet"]
+        assert service._is_provider_available(intranet_provider) is False
+    
+    @patch.dict(os.environ, {"INTRANET_MODE": "true"})
+    def test_environment_variable_enables_intranet(self, sample_llms_yaml):
+        """Test that INTRANET_MODE=true enables intranet mode even when not in config"""
+        # Create service with regular config (no intranet_mode set)
+        service = UnifiedLLMService(config_path=sample_llms_yaml)
+        
+        # Should be True due to environment variable
+        assert service.intranet_mode is True
+    
+    def test_provider_config_with_intranet_flag(self):
+        """Test ProviderConfig with intranet flag"""
+        config = ProviderConfig(
+            type="openai",
+            base_url="http://127.0.0.1:4000",
+            api_key_env="PROXY_API_KEY",
+            max_tokens_param="max_completion_tokens",
+            intranet=True
+        )
+        
+        assert config.intranet is True
+        
+        # Test default value
+        config_default = ProviderConfig(
+            type="openai",
+            base_url="https://api.openai.com/v1",
+            api_key_env="OPENAI_API_KEY"
+        )
+        
+        assert config_default.intranet is False

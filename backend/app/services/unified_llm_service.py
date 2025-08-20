@@ -27,6 +27,7 @@ class ProviderConfig:
     base_url: str
     api_key_env: str
     max_tokens_param: str = "max_tokens"
+    intranet: bool = False
 
 class UnifiedLLMService:
     """Unified service for all LLM providers and models"""
@@ -40,6 +41,7 @@ class UnifiedLLMService:
         self.models: Dict[str, ModelConfig] = {}
         self.default_model: str = ""
         self.default_timeout: int = 60
+        self.intranet_mode: bool = False
         self._http_clients: Dict[str, httpx.AsyncClient] = {}
         
         self._load_config()
@@ -62,7 +64,19 @@ class UnifiedLLMService:
             self.default_model = config.get('default_model', '')
             self.default_timeout = config.get('default_timeout', 60)
             
+            # Load intranet mode - can be overridden by environment variable
+            config_intranet_mode = config.get('intranet_mode', False)
+            env_intranet_mode_str = os.getenv('INTRANET_MODE', '').lower()
+            
+            if env_intranet_mode_str:
+                # Environment variable overrides config
+                self.intranet_mode = env_intranet_mode_str in ('true', '1', 'yes')
+            else:
+                # Use config value if no environment variable is set
+                self.intranet_mode = config_intranet_mode
+            
             logger.info(f"Loaded {len(self.providers)} providers and {len(self.models)} models")
+            logger.info(f"Intranet mode: {self.intranet_mode}")
             
         except Exception as e:
             logger.error(f"Failed to load LLM configuration: {e}")
@@ -79,10 +93,12 @@ class UnifiedLLMService:
             }
             
             # Add appropriate authorization header based on provider type
-            if provider.type == "openai":
-                headers["Authorization"] = f"Bearer {api_key}"
-            elif provider.type == "anthropic":
-                headers["x-api-key"] = api_key
+            # In intranet mode, intranet providers don't need API keys
+            if not (self.intranet_mode and provider.intranet):
+                if provider.type == "openai" and api_key:
+                    headers["Authorization"] = f"Bearer {api_key}"
+                elif provider.type == "anthropic" and api_key:
+                    headers["x-api-key"] = api_key
             
             self._http_clients[provider_id] = httpx.AsyncClient(
                 base_url=provider.base_url,
@@ -109,7 +125,12 @@ class UnifiedLLMService:
         return available_models
     
     def _is_provider_available(self, provider: ProviderConfig) -> bool:
-        """Check if a provider is available (has required API key)"""
+        """Check if a provider is available (has required API key or is intranet)"""
+        # In intranet mode, intranet providers are always available
+        if self.intranet_mode and provider.intranet:
+            return True
+        
+        # For non-intranet providers or when not in intranet mode, check API key
         return bool(os.getenv(provider.api_key_env))
     
     def get_default_model_id(self) -> str:
