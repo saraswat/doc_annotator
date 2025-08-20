@@ -13,17 +13,20 @@ import DocumentViewerWithLayout from './components/DocumentViewer/DocumentViewer
 import DocumentSelector from './components/DocumentSelector/DocumentSelector';
 import AdminDashboard from './components/Admin/AdminDashboard';
 import PasswordChangeRequired from './components/Auth/PasswordChangeRequired';
+import ChatView from './components/Chat/ChatView';
 
 // Contexts
 import { AuthProvider } from './contexts/AuthContext';
 import { DocumentProvider } from './contexts/DocumentContext';
+import { ViewProvider } from './contexts/ViewContext';
 import { AnnotationProvider } from './contexts/AnnotationContext';
 
 function App() {
   return (
     <AuthProvider>
-      <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
-        <Routes>
+      <ViewProvider>
+        <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
+          <Routes>
           {/* Public routes */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/auth/callback" element={<OAuthCallback />} />
@@ -77,11 +80,28 @@ function App() {
               </MainLayout>
             </ProtectedRoute>
           } />
+
+          <Route path="/chat" element={
+            <ProtectedRoute>
+              <MainLayout>
+                <ChatView />
+              </MainLayout>
+            </ProtectedRoute>
+          } />
+
+          <Route path="/chat/:sessionId" element={
+            <ProtectedRoute>
+              <MainLayout>
+                <ChatView />
+              </MainLayout>
+            </ProtectedRoute>
+          } />
           
           {/* Catch all route */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
-      </Box>
+        </Box>
+      </ViewProvider>
     </AuthProvider>
   );
 }

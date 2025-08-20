@@ -4,15 +4,17 @@ Run this script to create the chat_sessions, chat_messages, and chat_contexts ta
 """
 
 import asyncio
-from app.core.database import get_engine, create_db_and_tables
-from app.models import ChatSession, ChatMessage, ChatContext
+from app.core.database_config import engine, Base
+from app.models.chat import ChatSession, ChatMessage, ChatContext
 
 async def create_chat_tables():
     """Create chat-related tables in the database."""
     print("Creating chat tables...")
     
     try:
-        await create_db_and_tables()
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        
         print("✅ Chat tables created successfully!")
         print("Tables added:")
         print("  - chat_sessions")

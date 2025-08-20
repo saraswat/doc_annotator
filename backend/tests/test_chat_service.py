@@ -222,7 +222,7 @@ class TestChatService:
         
         context = ChatContext(
             session_id="test-session",
-            problem_summary="Working on a coding problem",
+            summary="Working on a coding problem",
             current_goal="Fix the bug in the authentication system",
             tasks=[
                 {"description": "Review the login code", "status": "pending"},
@@ -277,7 +277,7 @@ class TestChatService:
         # Create a mock context
         existing_context = ChatContext(
             session_id="test-session",
-            problem_summary="Original summary",
+            summary="Original summary",
             current_goal="Original goal"
         )
         
@@ -286,13 +286,13 @@ class TestChatService:
             from app.schemas.chat import ChatContextUpdate
             
             updates = ChatContextUpdate(
-                problem_summary="Updated summary",
+                summary="Updated summary",
                 current_goal="Updated goal"
             )
             
             result = await service.update_session_context("test-session", 1, updates)
             
-            assert result.problem_summary == "Updated summary"
+            assert result.summary == "Updated summary"
             assert result.current_goal == "Updated goal"
             mock_db_session.commit.assert_called_once()
 

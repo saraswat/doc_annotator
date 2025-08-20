@@ -130,7 +130,7 @@ async def test_chat_context(async_session, test_chat_session) -> ChatContext:
     """Create test chat context."""
     context = ChatContext(
         session_id=test_chat_session.id,
-        problem_summary="User needs help with Python web application authentication",
+        summary="User needs help with Python web application authentication",
         current_goal="Implement secure user authentication system",
         tasks=[
             {

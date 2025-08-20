@@ -369,7 +369,7 @@ class TestChatContextEndpoints:
         
         context = ChatContext(
             session_id="session-1",
-            problem_summary="Working on authentication",
+            summary="Working on authentication",
             current_goal="Fix login issues",
             tasks=[{"description": "Review code", "status": "pending"}],
             relevant_documents=["doc1.md"]
@@ -386,7 +386,7 @@ class TestChatContextEndpoints:
         
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
-        assert data["problem_summary"] == "Working on authentication"
+        assert data["summary"] == "Working on authentication"
         assert data["current_goal"] == "Fix login issues"
         assert len(data["tasks"]) == 1
     
@@ -415,7 +415,7 @@ class TestChatContextEndpoints:
         
         updated_context = ChatContext(
             session_id="session-1",
-            problem_summary="Updated problem description",
+            summary="Updated problem description",
             current_goal="New goal",
             tasks=[],
             relevant_documents=[]
@@ -436,7 +436,7 @@ class TestChatContextEndpoints:
         
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
-        assert data["problem_summary"] == "Updated problem description"
+        assert data["summary"] == "Updated problem description"
         assert data["current_goal"] == "New goal"
 
 

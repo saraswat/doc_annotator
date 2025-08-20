@@ -36,10 +36,10 @@ echo "⚙️ Setting environment variables..."
 
 # Allow override of backend host for multi-host deployments
 BACKEND_HOST="${BACKEND_HOST:-localhost}"
-export REACT_APP_API_URL="https://$BACKEND_HOST:$BACKEND_PORT/api"
+export REACT_APP_API_URL="http://$BACKEND_HOST:$BACKEND_PORT/api"
 export REACT_APP_WS_URL="wss://$BACKEND_HOST:$BACKEND_PORT"
 export PORT="$FRONTEND_PORT"
-export HOST="0.0.0.0"
+export HOST="localhost"  # Google auth is expecting localhost
 
 echo "🗄️ Environment Configuration:"
 echo "  Frontend Port: $FRONTEND_PORT"

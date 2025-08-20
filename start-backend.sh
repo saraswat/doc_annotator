@@ -58,7 +58,7 @@ fi
 export SECRET_KEY="${SECRET_KEY:-$(python -c 'import secrets; print(secrets.token_hex(32))')}"
 export ADMIN_USER_EMAIL="${ADMIN_USER_EMAIL:-admin@test.com}"
 export ADMIN_INITIAL_PASSWORD="${ADMIN_INITIAL_PASSWORD:-temppass123}"
-export CORS_ORIGINS='["https://localhost:3000","https://foo.com:40000"]'
+export CORS_ORIGINS='["https://localhost:3000","*"]'
 export OAUTH_CLIENT_ID="${OAUTH_CLIENT_ID:-}"
 export OAUTH_CLIENT_SECRET="${OAUTH_CLIENT_SECRET:-}"
 export OAUTH_PROVIDER="${OAUTH_PROVIDER:-google}"
@@ -170,14 +170,8 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# Start the FastAPI server
-echo "🌐 Starting FastAPI server on http://localhost:$BACKEND_PORT..."
-echo "📋 API documentation will be available at http://localhost:$BACKEND_PORT/docs"
-echo "🔴 Press Ctrl+C to stop the server"
-echo ""
-
 # Update CORS origins to include frontend with any port
-export CORS_ORIGINS='["https://localhost:3000", "https://localhost:3001", "https://localhost:8080", "https://foo.com:40000"]'
+export CORS_ORIGINS='["http://localhost:3000", "https://localhost:3000"]'
 
 # SSL certificates for HTTPS
 SSL_KEYFILE="${SSL_KEYFILE:-./ssl/key.pem}"
@@ -186,7 +180,13 @@ SSL_CA_CERTS="${SSL_CA_CERTS:-./ssl/FICARoot.pem}"
 
 # Start with HTTPS if certificates exist, otherwise HTTP
 if [ -f "$SSL_KEYFILE" ] && [ -f "$SSL_CERTFILE" ]; then
-    echo "🔒 Starting with HTTPS using SSL certificates"
+    # Start the FastAPI server
+    echo "🌐 Starting FastAPI server on https://localhost:$BACKEND_PORT with SSL certificates..."
+    echo "📋 API documentation will be available at https://localhost:$BACKEND_PORT/docs"
+    echo "🔴 Press Ctrl+C to stop the server"
+    echo ""
+
+    export HTTPS=true
     if [ -f "$SSL_CA_CERTS" ]; then
         echo "📋 Using CA certificate: $SSL_CA_CERTS"
         uvicorn main:app --host 0.0.0.0 --port $BACKEND_PORT --reload --ssl-keyfile "$SSL_KEYFILE" --ssl-certfile "$SSL_CERTFILE" --ssl-ca-certs "$SSL_CA_CERTS"
@@ -195,6 +195,11 @@ if [ -f "$SSL_KEYFILE" ] && [ -f "$SSL_CERTFILE" ]; then
     fi
 else
     echo "⚠️ SSL certificates not found at $SSL_KEYFILE and $SSL_CERTFILE"
-    echo "🔓 Starting with HTTP (not recommended for production)"
+    echo "🔓 Starting with HTTP (not recommended for production)"    
+    echo "🌐 Starting FastAPI server on http://localhost:$BACKEND_PORT ..."
+    echo "📋 API documentation will be available at http://localhost:$BACKEND_PORT/docs"
+    echo "🔴 Press Ctrl+C to stop the server"
+    echo ""    
+    export HTTPS=false
     uvicorn main:app --host 0.0.0.0 --port $BACKEND_PORT --reload
 fi

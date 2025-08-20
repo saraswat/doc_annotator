@@ -17,7 +17,7 @@ def sample_context():
     """Sample chat context for testing"""
     return ChatContext(
         session_id="test-session-id",
-        problem_summary="Working on user authentication system",
+        summary="Working on user authentication system",
         current_goal="Fix login validation bug",
         tasks=[
             {
@@ -268,16 +268,16 @@ class TestContextManager:
         
         await context_manager._update_summary(context, user_message, assistant_response)
         
-        assert context.problem_summary is not None
-        assert len(context.problem_summary) > 0
-        assert "having trouble with the login system" in context.problem_summary
+        assert context.summary is not None
+        assert len(context.summary) > 0
+        assert "having trouble with the login system" in context.summary
     
     @pytest.mark.asyncio
     async def test_update_from_conversation(self, context_manager):
         """Test updating context from full conversation"""
         context = ChatContext(
             session_id="test-session",
-            problem_summary="",
+            summary="",
             current_goal="",
             tasks=[]
         )
@@ -309,8 +309,8 @@ class TestContextManager:
         assert "resolve all authentication issues" in context.current_goal.lower()
         
         # Check that summary was created
-        assert context.problem_summary is not None
-        assert len(context.problem_summary) > 0
+        assert context.summary is not None
+        assert len(context.summary) > 0
     
     @pytest.mark.asyncio
     async def test_extract_document_relevance(self, context_manager):

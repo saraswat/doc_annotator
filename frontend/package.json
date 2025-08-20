@@ -33,7 +33,10 @@
   },
   "devDependencies": {
     "@types/uuid": "^9.0.0",
-    "react-scripts": "^5.0.1"
+    "react-scripts": "^5.0.1",
+    "@testing-library/react": "^13.4.0",
+    "@testing-library/jest-dom": "^5.16.5",
+    "@testing-library/user-event": "^14.4.3"
   },
   "browserslist": {
     "production": [

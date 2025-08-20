@@ -263,7 +263,7 @@ class TestChatServiceLLMIntegration:
         
         mock_context = ChatContext(
             session_id="test-session",
-            problem_summary="Testing chat system",
+            summary="Testing chat system",
             current_goal="Verify end-to-end functionality"
         )
         
@@ -374,7 +374,7 @@ class TestChatServiceLLMIntegration:
         # Create mock context
         mock_context = ChatContext(
             session_id="test-session",
-            problem_summary="",
+            summary="",
             current_goal="",
             tasks=[]
         )

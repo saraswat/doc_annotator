@@ -316,7 +316,7 @@ class TestChatContext:
         # Create context
         context = ChatContext(
             session_id=session.id,
-            problem_summary="Working on user authentication system",
+            summary="Working on user authentication system",
             current_goal="Fix login validation bug",
             tasks=[
                 {
@@ -342,7 +342,7 @@ class TestChatContext:
         
         assert context.id is not None
         assert context.session_id == session.id
-        assert context.problem_summary == "Working on user authentication system"
+        assert context.summary == "Working on user authentication system"
         assert context.current_goal == "Fix login validation bug"
         assert len(context.tasks) == 2
         assert context.tasks[0]["description"] == "Review authentication code"
@@ -368,7 +368,7 @@ class TestChatContext:
         await async_session.commit()
         await async_session.refresh(context)
         
-        assert context.problem_summary is None
+        assert context.summary is None
         assert context.current_goal is None
         assert context.tasks == []
         assert context.relevant_documents == []
@@ -386,7 +386,7 @@ class TestChatContext:
         # Create context
         context = ChatContext(
             session_id=session.id,
-            problem_summary="Test problem"
+            summary="Test problem"
         )
         async_session.add(context)
         await async_session.commit()
@@ -409,7 +409,7 @@ class TestChatContext:
         loaded_session = result.scalar_one()
         
         await async_session.refresh(loaded_session, ['context'])
-        assert loaded_session.context.problem_summary == "Test problem"
+        assert loaded_session.context.summary == "Test problem"
     
     @pytest.mark.asyncio
     async def test_chat_context_unique_constraint(self, async_session, test_user):
@@ -423,7 +423,7 @@ class TestChatContext:
         # Create first context
         context1 = ChatContext(
             session_id=session.id,
-            problem_summary="First context"
+            summary="First context"
         )
         async_session.add(context1)
         await async_session.commit()
@@ -431,7 +431,7 @@ class TestChatContext:
         # Try to create second context for same session
         context2 = ChatContext(
             session_id=session.id,
-            problem_summary="Second context"
+            summary="Second context"
         )
         async_session.add(context2)
         
@@ -524,7 +524,7 @@ class TestChatModelsIntegration:
         # Create context based on the conversation
         context = ChatContext(
             session_id=session.id,
-            problem_summary="User authentication system bug - invalid credentials error",
+            summary="User authentication system bug - invalid credentials error",
             current_goal="Debug and fix password validation issue",
             tasks=[
                 {
@@ -582,7 +582,7 @@ class TestChatModelsIntegration:
         
         # Verify context
         assert final_session.context is not None
-        assert "authentication system bug" in final_session.context.problem_summary
+        assert "authentication system bug" in final_session.context.summary
         assert len(final_session.context.tasks) == 3
         assert "Check password hashing logic" in str(final_session.context.tasks)
         assert "auth_system.py" in final_session.context.relevant_documents
@@ -605,7 +605,7 @@ class TestChatModelsIntegration:
         
         context = ChatContext(
             session_id=session.id,
-            problem_summary="Test context"
+            summary="Test context"
         )
         async_session.add(context)
         
