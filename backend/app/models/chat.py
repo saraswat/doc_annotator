@@ -1,23 +1,22 @@
 from sqlalchemy import Column, String, Integer, Text, DateTime, Boolean, ForeignKey, JSON
-from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from datetime import datetime
 import uuid
 
-from app.core.database import Base
+from app.core.database_config import Base
 
 class ChatSession(Base):
     __tablename__ = "chat_sessions"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     title = Column(String(200), default="New Chat")
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     status = Column(String(20), default="active")  # active, archived
     
-    # Metadata
-    metadata = Column(JSON, default={})
+    # Session metadata and settings
+    session_metadata = Column(JSON, default={})
     settings = Column(JSON, default={})
     
     # Statistics
@@ -32,8 +31,8 @@ class ChatSession(Base):
 class ChatMessage(Base):
     __tablename__ = "chat_messages"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    session_id = Column(UUID(as_uuid=True), ForeignKey("chat_sessions.id"), nullable=False)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    session_id = Column(String(36), ForeignKey("chat_sessions.id"), nullable=False)
     role = Column(String(20), nullable=False)  # user, assistant, system
     content = Column(Text, nullable=False)
     timestamp = Column(DateTime, default=datetime.utcnow)
@@ -42,8 +41,8 @@ class ChatMessage(Base):
     tokens = Column(Integer)
     model = Column(String(50))
     
-    # Metadata for references and context
-    metadata = Column(JSON, default={})
+    # Message metadata for references and context
+    message_metadata = Column(JSON, default={})
     
     # Document references
     document_references = Column(JSON, default=[])
@@ -55,11 +54,11 @@ class ChatMessage(Base):
 class ChatContext(Base):
     __tablename__ = "chat_contexts"
     
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    session_id = Column(UUID(as_uuid=True), ForeignKey("chat_sessions.id"), unique=True, nullable=False)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    session_id = Column(String(36), ForeignKey("chat_sessions.id"), unique=True, nullable=False)
     
     # Problem solving context
-    summary = Column(Text)
+    problem_summary = Column(Text)
     current_goal = Column(String(500))
     tasks = Column(JSON, default=[])
     

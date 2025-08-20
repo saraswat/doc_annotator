@@ -13,6 +13,12 @@ class ChatSettings(BaseModel):
 
 class ChatSessionCreate(BaseModel):
     title: Optional[str] = None
+    status: Optional[str] = None
+    metadata: Optional[Dict[str, Any]] = None
+
+class ChatSessionUpdate(BaseModel):
+    title: Optional[str] = None
+    status: Optional[str] = None
 
 class ChatSessionResponse(BaseModel):
     id: UUID
@@ -21,7 +27,7 @@ class ChatSessionResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     status: str
-    metadata: Dict[str, Any] = {}
+    session_metadata: Dict[str, Any] = {}
     settings: Dict[str, Any] = {}
     message_count: int
     total_tokens: int
@@ -32,8 +38,10 @@ class ChatSessionResponse(BaseModel):
 
 class ChatMessageCreate(BaseModel):
     content: str
+    role: str = "user"
     settings: ChatSettings
     context_options: Dict[str, Any] = {}
+    metadata: Optional[Dict[str, Any]] = None
 
 class ChatMessageResponse(BaseModel):
     id: UUID
@@ -43,7 +51,7 @@ class ChatMessageResponse(BaseModel):
     timestamp: datetime
     tokens: Optional[int] = None
     model: Optional[str] = None
-    metadata: Dict[str, Any] = {}
+    message_metadata: Dict[str, Any] = {}
     document_references: List[Dict[str, Any]] = []
     annotation_references: List[str] = []
 
@@ -68,14 +76,26 @@ class TaskResponse(BaseModel):
     completed_at: Optional[datetime] = None
 
 class ContextUpdate(BaseModel):
-    summary: Optional[str] = None
+    problem_summary: Optional[str] = None
     current_goal: Optional[str] = None
     tasks: Optional[List[Dict[str, Any]]] = None
     relevant_documents: Optional[List[str]] = None
 
+class ChatContextUpdate(BaseModel):
+    problem_summary: Optional[str] = None
+    current_goal: Optional[str] = None
+    tasks: Optional[List[Dict[str, Any]]] = None
+    relevant_documents: Optional[List[str]] = None
+
+class StreamingResponse(BaseModel):
+    type: str  # "chunk", "complete", "error"
+    content: str = ""
+    metadata: Optional[Dict[str, Any]] = None
+    error: Optional[str] = None
+
 class ContextResponse(BaseModel):
     session_id: UUID
-    summary: Optional[str] = None
+    problem_summary: Optional[str] = None
     current_goal: Optional[str] = None
     tasks: List[Dict[str, Any]] = []
     relevant_documents: List[str] = []
