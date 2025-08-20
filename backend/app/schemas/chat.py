@@ -4,7 +4,7 @@ from typing import Optional, List, Dict, Any
 from uuid import UUID
 
 class ChatSettings(BaseModel):
-    model: str = "gpt-4"
+    model: str = "o3_mini"  # Use model ID, not technical name
     temperature: float = 0.7
     maxTokens: int = 2000
     webBrowsing: bool = False

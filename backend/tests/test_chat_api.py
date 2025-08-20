@@ -305,7 +305,7 @@ class TestChatMessageEndpoints:
         message_data = {
             "content": "Hello, assistant!",
             "settings": {
-                "model": "gpt-4",
+                "model": "test_model",
                 "temperature": 0.7,
                 "max_tokens": 2000
             },
@@ -350,7 +350,7 @@ class TestChatMessageEndpoints:
             "/api/chat/sessions/test-session-id/messages",
             json={
                 "content": "",
-                "settings": {"model": "gpt-4"}
+                "settings": {"model": "test_model"}
             },
             headers={"Authorization": "Bearer test-token"}
         )
@@ -517,7 +517,7 @@ class TestChatAPIErrorHandling:
             "/api/chat/sessions/session-1/messages",
             json={
                 "content": "Hello",
-                "settings": {"model": "gpt-4"}
+                "settings": {"model": "test_model"}
             },
             headers={"Authorization": "Bearer test-token"}
         )
@@ -567,7 +567,7 @@ class TestChatAPIValidation:
             json={
                 "content": "Hello",
                 "settings": {
-                    "model": "gpt-4",
+                    "model": "test_model",
                     "temperature": 2.0  # Should be <= 1.0
                 }
             },
@@ -595,3 +595,59 @@ class TestChatAPIValidation:
                 status.HTTP_422_UNPROCESSABLE_ENTITY,
                 status.HTTP_400_BAD_REQUEST
             ]
+
+
+@pytest.mark.asyncio
+class TestModelsAPI:
+    """Test the models API endpoint"""
+    
+    @patch("app.api.chat.get_llm_service")
+    async def test_get_available_models(self, mock_get_service, client):
+        """Test GET /api/chat/models endpoint"""
+        # Mock LLM service
+        mock_service = Mock()
+        mock_service.get_available_models = AsyncMock(return_value=[
+            {
+                "id": "test_model_1",
+                "technical_name": "test-gpt-4",
+                "common_name": "Test GPT-4",
+                "provider": "test_openai"
+            },
+            {
+                "id": "test_model_2", 
+                "technical_name": "test-claude",
+                "common_name": "Test Claude",
+                "provider": "test_anthropic"
+            }
+        ])
+        mock_service.get_default_model_id = Mock(return_value="test_model_1")
+        mock_get_service.return_value = mock_service
+        
+        response = client.get("/api/chat/models")
+        
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+        
+        assert "models" in data
+        assert "default_model" in data
+        assert len(data["models"]) == 2
+        assert data["default_model"] == "test_model_1"
+        
+        # Check model structure
+        model = data["models"][0]
+        assert "id" in model
+        assert "technical_name" in model
+        assert "common_name" in model
+        assert "provider" in model
+    
+    @patch("app.api.chat.get_llm_service")
+    async def test_get_models_service_error(self, mock_get_service, client):
+        """Test models endpoint when service fails"""
+        mock_service = Mock()
+        mock_service.get_available_models = AsyncMock(side_effect=Exception("Service error"))
+        mock_get_service.return_value = mock_service
+        
+        response = client.get("/api/chat/models")
+        
+        # Should still return 500 or handle gracefully
+        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR

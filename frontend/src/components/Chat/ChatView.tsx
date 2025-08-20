@@ -24,7 +24,7 @@ const ChatView: React.FC<ChatViewProps> = ({ sessionId: propSessionId, onNewSess
   const [messages, setMessages] = useState<ChatMessageType[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [chatSettings, setChatSettings] = useState<ChatSettings>({
-    model: 'gpt-4',
+    model: 'o3_mini', // Use model ID, not technical name
     temperature: 0.7,
     maxTokens: 2000,
     webBrowsing: false,

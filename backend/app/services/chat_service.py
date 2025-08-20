@@ -227,7 +227,7 @@ class ChatService:
             
             # Get LLM settings from message metadata
             settings = message_data.settings
-            model = settings.model if settings else "gpt-4"
+            model = settings.model if settings else "o3_mini"
             temperature = settings.temperature if settings else 0.7
             max_tokens = settings.maxTokens if settings else 2000
             

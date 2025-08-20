@@ -18,7 +18,7 @@ class LLMProviderConfig:
     provider: LLMProvider
     api_key: str
     base_url: str
-    model: str = "gpt-4"
+    model: str = "o3_mini"
     temperature: float = 0.7
     max_tokens: int = 2000
     timeout: int = 60

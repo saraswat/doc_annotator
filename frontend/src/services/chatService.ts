@@ -109,6 +109,11 @@ class ChatService {
       throw error;
     }
   }
+
+  async getAvailableModels(): Promise<{models: Array<{id: string, technical_name: string, common_name: string, provider: string}>, default_model: string}> {
+    const response = await apiService.get('/chat/models');
+    return response.data;
+  }
 }
 
 export default new ChatService();

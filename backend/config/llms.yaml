@@ -1,0 +1,67 @@
+providers:
+  openai_official:
+    type: "openai"
+    base_url: "https://api.openai.com/v1"
+    api_key_env: "OPENAI_API_KEY"
+    max_tokens_param: "max_completion_tokens"  # Newer OpenAI models use this
+    
+  openai_proxy:
+    type: "openai" 
+    base_url: "http://127.0.0.1:4000"
+    api_key_env: "PROXY_API_KEY"
+    max_tokens_param: "max_completion_tokens"
+    
+  anthropic_official:
+    type: "anthropic"
+    base_url: "https://api.anthropic.com"
+    api_key_env: "ANTHROPIC_API_KEY"
+    max_tokens_param: "max_tokens"
+
+models:
+  o3_mini:
+    technical_name: "o3_mini-2025-01-31-pyg-1"
+    common_name: "O3 Mini"
+    provider: "openai_proxy"
+    default_temperature: 0.7
+    default_max_tokens: 2000
+    
+  gpt4:
+    technical_name: "gpt-4"
+    common_name: "GPT-4"
+    provider: "openai_official"
+    default_temperature: 0.7
+    default_max_tokens: 2000
+    
+  gpt4_turbo:
+    technical_name: "gpt-4-turbo"
+    common_name: "GPT-4 Turbo"
+    provider: "openai_official"
+    default_temperature: 0.7
+    default_max_tokens: 4000
+    
+  gpt35_turbo:
+    technical_name: "gpt-3.5-turbo"
+    common_name: "GPT-3.5 Turbo"
+    provider: "openai_official"
+    default_temperature: 0.7
+    default_max_tokens: 2000
+    
+  claude_opus:
+    technical_name: "claude-3-opus-20240229"
+    common_name: "Claude 3 Opus"
+    provider: "anthropic_official"
+    default_temperature: 0.7
+    default_max_tokens: 2000
+    
+  claude_sonnet:
+    technical_name: "claude-3-sonnet-20240229"
+    common_name: "Claude 3 Sonnet"
+    provider: "anthropic_official"
+    default_temperature: 0.7
+    default_max_tokens: 2000
+
+# Default model to use when none specified
+default_model: "o3_mini"
+
+# Timeout settings
+default_timeout: 60

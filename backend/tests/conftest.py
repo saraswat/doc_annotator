@@ -80,7 +80,7 @@ async def test_chat_session(async_session, test_user) -> ChatSession:
         title="Test Chat Session",
         status="active",
         session_metadata={"test": "data"},
-        settings={"model": "gpt-4", "temperature": 0.7}
+        settings={"model": "test_model", "temperature": 0.7}
     )
     
     async_session.add(session)
@@ -104,7 +104,7 @@ async def test_chat_messages(async_session, test_chat_session) -> list[ChatMessa
             session_id=test_chat_session.id,
             role="assistant",
             content="Of course! I'd be happy to help you with your project. What specific area would you like assistance with?",
-            model="gpt-4",
+            model="test_model",
             tokens=25,
             message_metadata={"completion_reason": "stop"}
         ),

@@ -325,7 +325,7 @@ class TestChatServiceStreaming:
             
             message_data = ChatMessageCreate(
                 content="Test message",
-                settings=ChatSettings(model="gpt-4"),
+                settings=ChatSettings(model="test_model"),
                 context_options={}
             )
             

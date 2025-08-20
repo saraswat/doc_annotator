@@ -177,7 +177,7 @@ async def send_message(
     # Stream LLM response
     async def generate():
         try:
-            from app.services.llm_client import get_llm_client
+            from app.services.unified_llm_service import get_llm_service
             
             # Save user message
             user_message = ChatMessage(
@@ -221,14 +221,14 @@ async def send_message(
                 "content": message_data.content
             })
             
-            # Get LLM client and stream response
-            llm_client = await get_llm_client()
+            # Get LLM service and stream response
+            llm_service = await get_llm_service()
             full_response = ""
             assistant_message = None
             
-            async for chunk in llm_client.chat_completion(
+            async for chunk in llm_service.chat_completion(
+                model_id=message_data.settings.model,
                 messages=conversation,
-                model=message_data.settings.model,
                 temperature=message_data.settings.temperature,
                 max_tokens=message_data.settings.maxTokens,
                 stream=True
@@ -469,6 +469,16 @@ async def submit_message_feedback(
         updated_at=feedback.updated_at
     )
 
+@router.get("/models")
+async def get_available_models():
+    """Get list of available LLM models"""
+    llm_service = await get_llm_service()
+    models = await llm_service.get_available_models()
+    return {
+        "models": models,
+        "default_model": llm_service.get_default_model_id()
+    }
+
 @router.get("/messages/{message_id}/feedback", response_model=Optional[MessageFeedbackResponse])
 async def get_message_feedback(
     message_id: UUID,
@@ -509,3 +519,13 @@ async def get_message_feedback(
         created_at=feedback.created_at,
         updated_at=feedback.updated_at
     )
+
+@router.get("/models")
+async def get_available_models():
+    """Get list of available LLM models"""
+    llm_service = await get_llm_service()
+    models = await llm_service.get_available_models()
+    return {
+        "models": models,
+        "default_model": llm_service.get_default_model_id()
+    }

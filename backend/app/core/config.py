@@ -63,36 +63,11 @@ class Settings(BaseSettings):
     
     # Chat Service Configuration
     CHAT_SERVICE_ENABLED: bool = True
-    CHAT_DEFAULT_PROVIDER: str = "openai"
     
-    # LLM Provider Configuration
-    # OpenAI
+    # LLM API Keys (referenced in llms.yaml)
     OPENAI_API_KEY: str = ""
-    OPENAI_BASE_URL: str = "https://api.openai.com/v1"
-    OPENAI_MODEL: str = "gpt-4"
-    OPENAI_TEMPERATURE: float = 0.7
-    OPENAI_MAX_TOKENS: int = 2000
-    OPENAI_TIMEOUT: int = 60
-    
-    # Anthropic
     ANTHROPIC_API_KEY: str = ""
-    ANTHROPIC_BASE_URL: str = "https://api.anthropic.com"
-    ANTHROPIC_MODEL: str = "claude-3-sonnet-20240229"
-    ANTHROPIC_TEMPERATURE: float = 0.7
-    ANTHROPIC_MAX_TOKENS: int = 2000
-    ANTHROPIC_TIMEOUT: int = 60
-    
-    # Custom LLM Service
-    CUSTOM_LLM_API_KEY: str = ""
-    CUSTOM_LLM_BASE_URL: str = ""
-    CUSTOM_LLM_MODEL: str = ""
-    CUSTOM_LLM_TEMPERATURE: float = 0.7
-    CUSTOM_LLM_MAX_TOKENS: int = 2000
-    CUSTOM_LLM_TIMEOUT: int = 60
-    
-    # Chat Service URLs and Endpoints
-    CHAT_COMPLETION_ENDPOINT: str = "/chat/completions"
-    CHAT_MODELS_ENDPOINT: str = "/models"
+    PROXY_API_KEY: str = ""
     
     class Config:
         env_file = ".env"

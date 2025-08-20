@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Box,
   TextField,
@@ -23,6 +23,7 @@ import {
   Language as WebIcon
 } from '@mui/icons-material';
 import { ChatSettings } from '../../types/chat';
+import chatService from '../../services/chatService';
 
 interface ChatInputProps {
   onSend: (message: string, attachments?: any[]) => void;
@@ -41,6 +42,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
 }) => {
   const [message, setMessage] = useState('');
   const [settingsAnchor, setSettingsAnchor] = useState<null | HTMLElement>(null);
+  const [availableModels, setAvailableModels] = useState<Array<{value: string, label: string}>>([]);
   const textFieldRef = useRef<HTMLDivElement>(null);
 
   const handleSend = () => {
@@ -57,14 +59,30 @@ const ChatInput: React.FC<ChatInputProps> = ({
     }
   };
 
-  const availableModels = [
-    { value: 'gpt-4', label: 'GPT-4' },
-    { value: 'gpt-4-turbo', label: 'GPT-4 Turbo' },
-    { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo' },
-    { value: 'claude-3-opus', label: 'Claude 3 Opus' },
-    { value: 'claude-3-sonnet', label: 'Claude 3 Sonnet' },
-    { value: 'custom', label: 'Custom Endpoint' }
-  ];
+  // Load available models from API
+  useEffect(() => {
+    const loadModels = async () => {
+      try {
+        const modelsData = await chatService.getAvailableModels();
+        const modelOptions = modelsData.models.map(model => ({
+          value: model.id,
+          label: model.common_name
+        }));
+        setAvailableModels(modelOptions);
+        
+        // Set default model if current model is not in the list
+        if (!modelsData.models.find(m => m.id === settings.model)) {
+          onSettingsChange({ model: modelsData.default_model });
+        }
+      } catch (error) {
+        console.error('Failed to load available models:', error);
+        // Fallback to empty list - user can still type model name
+        setAvailableModels([]);
+      }
+    };
+    
+    loadModels();
+  }, [settings.model, onSettingsChange]);
 
   return (
     <Box>

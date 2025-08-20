@@ -7,7 +7,7 @@ from fastapi import FastAPI
 
 from app.api.chat import router
 from app.services.chat_service import ChatService
-from app.services.llm_client import LLMClient
+from app.services.unified_llm_service import UnifiedLLMService
 from app.schemas.chat import StreamingResponse, ChatSessionCreate, ChatMessageCreate, ChatSettings
 from app.models.chat import ChatSession, ChatMessage, ChatContext
 
@@ -67,7 +67,7 @@ class TestChatStreamingIntegration:
         message_data = {
             "content": "Can you help me debug my authentication code?",
             "settings": {
-                "model": "gpt-4",
+                "model": "test_model",
                 "temperature": 0.7,
                 "max_tokens": 2000,
                 "web_browsing": False,
@@ -149,7 +149,7 @@ class TestChatStreamingIntegration:
         
         message_data = {
             "content": "Hello",
-            "settings": {"model": "gpt-4"},
+            "settings": {"model": "test_model"},
             "context_options": {}
         }
         
@@ -202,7 +202,7 @@ class TestChatStreamingIntegration:
         
         message_data = {
             "content": "I need to fix authentication bugs in my system",
-            "settings": {"model": "gpt-4"},
+            "settings": {"model": "test_model"},
             "context_options": {"enable_context_updates": True}
         }
         
@@ -276,7 +276,7 @@ class TestChatServiceLLMIntegration:
             
             message_data = ChatMessageCreate(
                 content="Hello, can you help me?",
-                settings=ChatSettings(model="gpt-4"),
+                settings=ChatSettings(model="test_model"),
                 context_options={}
             )
             
@@ -332,7 +332,7 @@ class TestChatServiceLLMIntegration:
         responses = []
         async for response in llm_client.chat_completion(
             messages=[{"role": "user", "content": "Hello"}],
-            model="gpt-4",
+            model="test_model",
             stream=True
         ):
             responses.append(response)
@@ -511,7 +511,7 @@ class TestChatSystemErrorRecovery:
         
         message_data = {
             "content": "Test message",
-            "settings": {"model": "gpt-4"},
+            "settings": {"model": "test_model"},
             "context_options": {}
         }
         

@@ -67,7 +67,7 @@ class TestChatSession:
             title="Test Session",
             status="active",
             session_metadata={"test": "data"},
-            settings={"model": "gpt-4"}
+            settings={"model": "test_model"}
         )
         
         async_session.add(session)
@@ -79,7 +79,7 @@ class TestChatSession:
         assert session.title == "Test Session"
         assert session.status == "active"
         assert session.session_metadata == {"test": "data"}
-        assert session.settings == {"model": "gpt-4"}
+        assert session.settings == {"model": "test_model"}
         assert session.message_count == 0
         assert session.total_tokens == 0
         assert session.created_at is not None
@@ -186,7 +186,7 @@ class TestChatMessage:
             role="user",
             content="Hello, how are you?",
             tokens=15,
-            model="gpt-4",
+            model="test_model",
             message_metadata={"source": "web"},
             document_references=[{"doc_id": "doc1", "title": "Document 1"}],
             annotation_references=["annotation1", "annotation2"]
@@ -486,7 +486,7 @@ class TestChatModelsIntegration:
         session = ChatSession(
             user_id=test_user.id,
             title="Problem Solving Session",
-            settings={"model": "gpt-4", "temperature": 0.7}
+            settings={"model": "test_model", "temperature": 0.7}
         )
         async_session.add(session)
         await async_session.commit()
@@ -513,7 +513,7 @@ class TestChatModelsIntegration:
                 session_id=session.id,
                 role="assistant", 
                 content="Let's debug this step by step. First, let's check the password hashing logic.",
-                model="gpt-4",
+                model="test_model",
                 tokens=45
             )
         ]

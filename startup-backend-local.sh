@@ -33,6 +33,9 @@ export DATABASE_TYPE=sqlite
 export DATABASE_URL=sqlite+aiosqlite:///./data/annotation.db
 export CORS_ORIGINS='["http://localhost:3000", "http://127.0.0.1:3000"]'
 
+# LLM Configuration for intranet with litellm proxy
+export PROXY_API_KEY="dummy-key-for-litellm"
+
 # Create data directory if it doesn't exist
 mkdir -p data
 

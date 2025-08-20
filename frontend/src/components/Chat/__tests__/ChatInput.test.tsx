@@ -4,15 +4,39 @@ import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
 import ChatInput from '../ChatInput';
 import { ChatSettings } from '../../../types/chat';
+import chatService from '../../../services/chatService';
+
+// Mock the chat service
+jest.mock('../../../services/chatService');
 
 describe('ChatInput Component', () => {
+  const mockChatService = chatService as jest.Mocked<typeof chatService>;
+  
   const defaultSettings: ChatSettings = {
-    model: 'gpt-4',
+    model: 'test_model',
     temperature: 0.7,
     maxTokens: 2000,
     webBrowsing: false,
     deepResearch: false,
     includeDocuments: []
+  };
+  
+  const mockModelsResponse = {
+    models: [
+      {
+        id: 'test_model',
+        technical_name: 'test-model-technical',
+        common_name: 'Test Model',
+        provider: 'test_provider'
+      },
+      {
+        id: 'another_model',
+        technical_name: 'another-model-technical', 
+        common_name: 'Another Model',
+        provider: 'test_provider'
+      }
+    ],
+    default_model: 'test_model'
   };
 
   const defaultProps = {
@@ -25,6 +49,7 @@ describe('ChatInput Component', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockChatService.getAvailableModels.mockResolvedValue(mockModelsResponse);
   });
 
   describe('Rendering', () => {
@@ -38,7 +63,7 @@ describe('ChatInput Component', () => {
     it('displays current model setting', () => {
       render(<ChatInput {...defaultProps} />);
 
-      expect(screen.getByText('Model: gpt-4')).toBeInTheDocument();
+      expect(screen.getByText('Model: test_model')).toBeInTheDocument();
     });
 
     it('shows active settings as chips', () => {
@@ -289,7 +314,7 @@ describe('ChatInput Component', () => {
       await user.click(settingsButton);
 
       expect(screen.getByText('Model:')).toBeInTheDocument();
-      expect(screen.getByDisplayValue('gpt-4')).toBeInTheDocument();
+      expect(screen.getByDisplayValue('test_model')).toBeInTheDocument();
     });
 
     it('allows changing model in settings menu', async () => {
@@ -306,7 +331,7 @@ describe('ChatInput Component', () => {
       const settingsButton = screen.getByLabelText(/chat settings/i);
       await user.click(settingsButton);
 
-      const modelSelect = screen.getByDisplayValue('gpt-4');
+      const modelSelect = screen.getByDisplayValue('test_model');
       await user.selectOptions(modelSelect, 'gpt-3.5-turbo');
 
       expect(onSettingsChangeMock).toHaveBeenCalledWith({

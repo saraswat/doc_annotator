@@ -288,7 +288,7 @@ describe('useChat Hook', () => {
         const messageData = {
           content: 'Hello',
           settings: {
-            model: 'gpt-4',
+            model: 'test_model',
             temperature: 0.7,
             maxTokens: 2000,
             webBrowsing: false,
@@ -311,7 +311,7 @@ describe('useChat Hook', () => {
         const messageData = {
           content: 'Hello',
           settings: {
-            model: 'gpt-4',
+            model: 'test_model',
             temperature: 0.7,
             maxTokens: 2000,
             webBrowsing: false,
@@ -344,7 +344,7 @@ describe('useChat Hook', () => {
         const messageData = {
           content: 'Hello',
           settings: {
-            model: 'gpt-4',
+            model: 'test_model',
             temperature: 0.7,
             maxTokens: 2000,
             webBrowsing: false,
