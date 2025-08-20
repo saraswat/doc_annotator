@@ -1,19 +1,26 @@
 #!/bin/bash
 
-# Document Annotation System - Backend Startup Script
-# This script sets up and starts the FastAPI backend without Docker
+# Document Annotation System - Backend Startup Script (Production)
+# This script sets up and starts the FastAPI backend with HTTPS
 # Usage: ./start-backend.sh [PORT] [DATABASE_TYPE]
+# Environment variables:
+#   BACKEND_HOST - Host to bind to (default: read from env or 0.0.0.0)
+#   SSL_KEYFILE - Path to SSL private key
+#   SSL_CERTFILE - Path to SSL certificate
 # Default port: 8000, default database: postgresql
 # DATABASE_TYPE options: postgresql, mysql, sqlite
 
 set -e
 
-# Parse command line arguments
+# Get configuration from environment variables
+BACKEND_HOST="${BACKEND_HOST:-0.0.0.0}"
 BACKEND_PORT="${1:-8000}"
 DATABASE_TYPE="${2:-postgresql}"
 
-echo "🚀 Starting Document Annotation Backend on port $BACKEND_PORT..."
-echo "🗄️ Using database type: $DATABASE_TYPE"
+echo "🚀 Starting Document Annotation Backend..."
+echo "🌐 Host: $BACKEND_HOST"
+echo "🔌 Port: $BACKEND_PORT" 
+echo "🗄️ Database type: $DATABASE_TYPE"
 
 # Check if we're in the right directory
 if [ ! -f "backend/main.py" ]; then
@@ -58,11 +65,13 @@ fi
 export SECRET_KEY="${SECRET_KEY:-$(python -c 'import secrets; print(secrets.token_hex(32))')}"
 export ADMIN_USER_EMAIL="${ADMIN_USER_EMAIL:-admin@test.com}"
 export ADMIN_INITIAL_PASSWORD="${ADMIN_INITIAL_PASSWORD:-temppass123}"
-export CORS_ORIGINS='["https://localhost:3000","*"]'
+# Configure CORS origins based on environment
+FRONTEND_HOST="${FRONTEND_HOST:-localhost}"
+export CORS_ORIGINS="[\"https://$FRONTEND_HOST:3000\",\"https://$FRONTEND_HOST\",\"*\"]"
 export OAUTH_CLIENT_ID="${OAUTH_CLIENT_ID:-}"
 export OAUTH_CLIENT_SECRET="${OAUTH_CLIENT_SECRET:-}"
 export OAUTH_PROVIDER="${OAUTH_PROVIDER:-google}"
-export OAUTH_REDIRECT_URI="${OAUTH_REDIRECT_URI:-https://localhost:3000/auth/callback}"
+export OAUTH_REDIRECT_URI="${OAUTH_REDIRECT_URI:-https://$FRONTEND_HOST:3000/auth/callback}"
 
 echo "🗄️ Environment Configuration:"
 echo "  DATABASE_TYPE: $DATABASE_TYPE"
@@ -170,36 +179,61 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# Update CORS origins to include frontend with any port
-export CORS_ORIGINS='["http://localhost:3000", "https://localhost:3000"]'
-
-# SSL certificates for HTTPS
+# SSL Configuration - Support both direct SSL and nginx SSL termination
 SSL_KEYFILE="${SSL_KEYFILE:-./ssl/key.pem}"
 SSL_CERTFILE="${SSL_CERTFILE:-./ssl/cert.pem}"
-SSL_CA_CERTS="${SSL_CA_CERTS:-./ssl/FICARoot.pem}"
+SSL_CA_CERTS="${SSL_CA_CERTS:-./ssl/ca.pem}"
+USE_NGINX_SSL="${USE_NGINX_SSL:-false}"
 
-# Start with HTTPS if certificates exist, otherwise HTTP
-if [ -f "$SSL_KEYFILE" ] && [ -f "$SSL_CERTFILE" ]; then
-    # Start the FastAPI server
-    echo "🌐 Starting FastAPI server on https://localhost:$BACKEND_PORT with SSL certificates..."
-    echo "📋 API documentation will be available at https://localhost:$BACKEND_PORT/docs"
+echo "🔒 SSL Configuration:"
+echo "  USE_NGINX_SSL: $USE_NGINX_SSL"
+echo "  SSL_KEYFILE: $SSL_KEYFILE"
+echo "  SSL_CERTFILE: $SSL_CERTFILE"
+echo "  FRONTEND_HOST: $FRONTEND_HOST"
+
+if [ "$USE_NGINX_SSL" = "true" ]; then
+    # Nginx handles SSL termination - run backend as HTTP
+    echo "🔄 Using nginx for SSL termination"
+    echo "🌐 Starting FastAPI server with HTTP (nginx will handle HTTPS)..."
+    echo "📋 Internal server URL: http://$BACKEND_HOST:$BACKEND_PORT"
+    echo "📋 Public API URL: https://$BACKEND_HOST/api (via nginx)"
+    echo "📋 API documentation: https://$BACKEND_HOST/docs (via nginx)"
+    echo "🔴 Press Ctrl+C to stop the server"
+    echo ""
+
+    export HTTPS=false
+    uvicorn main:app --host "$BACKEND_HOST" --port "$BACKEND_PORT" --reload
+    
+elif [ -f "$SSL_KEYFILE" ] && [ -f "$SSL_CERTFILE" ]; then
+    # Direct SSL - run backend with SSL certificates
+    echo "🌐 Starting FastAPI server with direct HTTPS..."
+    echo "📋 Server URL: https://$BACKEND_HOST:$BACKEND_PORT"
+    echo "📋 API documentation: https://$BACKEND_HOST:$BACKEND_PORT/docs"
     echo "🔴 Press Ctrl+C to stop the server"
     echo ""
 
     export HTTPS=true
     if [ -f "$SSL_CA_CERTS" ]; then
         echo "📋 Using CA certificate: $SSL_CA_CERTS"
-        uvicorn main:app --host 0.0.0.0 --port $BACKEND_PORT --reload --ssl-keyfile "$SSL_KEYFILE" --ssl-certfile "$SSL_CERTFILE" --ssl-ca-certs "$SSL_CA_CERTS"
+        uvicorn main:app --host "$BACKEND_HOST" --port "$BACKEND_PORT" --reload --ssl-keyfile "$SSL_KEYFILE" --ssl-certfile "$SSL_CERTFILE" --ssl-ca-certs "$SSL_CA_CERTS"
     else
-        uvicorn main:app --host 0.0.0.0 --port $BACKEND_PORT --reload --ssl-keyfile "$SSL_KEYFILE" --ssl-certfile "$SSL_CERTFILE"
+        uvicorn main:app --host "$BACKEND_HOST" --port "$BACKEND_PORT" --reload --ssl-keyfile "$SSL_KEYFILE" --ssl-certfile "$SSL_CERTFILE"
     fi
 else
-    echo "⚠️ SSL certificates not found at $SSL_KEYFILE and $SSL_CERTFILE"
-    echo "🔓 Starting with HTTP (not recommended for production)"    
-    echo "🌐 Starting FastAPI server on http://localhost:$BACKEND_PORT ..."
-    echo "📋 API documentation will be available at http://localhost:$BACKEND_PORT/docs"
-    echo "🔴 Press Ctrl+C to stop the server"
-    echo ""    
-    export HTTPS=false
-    uvicorn main:app --host 0.0.0.0 --port $BACKEND_PORT --reload
+    echo "❌ SSL configuration missing!"
+    echo ""
+    echo "Choose one of these options:"
+    echo "1. Use nginx for SSL termination:"
+    echo "   export USE_NGINX_SSL=true"
+    echo "   ./start-backend.sh"
+    echo ""
+    echo "2. Use direct SSL certificates:"
+    echo "   Create SSL certificates at:"
+    echo "     SSL_KEYFILE: $SSL_KEYFILE"
+    echo "     SSL_CERTFILE: $SSL_CERTFILE"
+    echo ""
+    echo "3. For local development:"
+    echo "   ./startup-backend-local.sh"
+    echo ""
+    exit 1
 fi
