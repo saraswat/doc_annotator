@@ -1,7 +1,23 @@
 import axios, { AxiosInstance } from 'axios';
 import toast from 'react-hot-toast';
 
-const API_URL = (process.env as any).REACT_APP_API_URL || 'https://localhost:8000/api';
+// Environment-based API URL configuration
+const getApiUrl = () => {
+  // If environment variable is set, use it
+  if ((process.env as any).REACT_APP_API_URL) {
+    return (process.env as any).REACT_APP_API_URL;
+  }
+  
+  // Auto-detect based on environment
+  if (process.env.NODE_ENV === 'development') {
+    return 'http://localhost:8000/api';
+  }
+  
+  // Production default (you should set REACT_APP_API_URL in production)
+  return 'https://your-production-domain.com/api';
+};
+
+const API_URL = getApiUrl();
 
 // Debug logging for troubleshooting
 console.log('🔧 Environment REACT_APP_API_URL:', (process.env as any).REACT_APP_API_URL);

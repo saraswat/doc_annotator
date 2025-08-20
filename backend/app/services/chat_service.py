@@ -229,7 +229,7 @@ class ChatService:
             settings = message_data.settings
             model = settings.model if settings else "gpt-4"
             temperature = settings.temperature if settings else 0.7
-            max_tokens = settings.max_tokens if settings else 2000
+            max_tokens = settings.maxTokens if settings else 2000
             
             # Get LLM client and stream response
             llm_client = await get_llm_client()
@@ -308,8 +308,8 @@ class ChatService:
         )
         
         # Add problem context
-        if context.problem_summary:
-            prompt_parts.append(f"\nCurrent Problem Context:\n{context.problem_summary}")
+        if context.summary:
+            prompt_parts.append(f"\nCurrent Problem Context:\n{context.summary}")
         
         if context.current_goal:
             prompt_parts.append(f"\nCurrent Goal: {context.current_goal}")
@@ -358,7 +358,7 @@ class ChatService:
                 # Create new context
                 context = ChatContext(
                     session_id=session.id,
-                    problem_summary="",
+                    summary="",
                     current_goal="",
                     tasks=[],
                     relevant_documents=[]
@@ -410,7 +410,7 @@ class ChatService:
             
             context = ChatContext(
                 session_id=session_id,
-                problem_summary="",
+                summary="",
                 current_goal="",
                 tasks=[],
                 relevant_documents=[]

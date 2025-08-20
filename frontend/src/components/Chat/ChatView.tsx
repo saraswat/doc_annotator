@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useParams } from 'react-router-dom';
 import { Box, Paper, Divider, CircularProgress, Typography } from '@mui/material';
 import { useChat } from '../../hooks/useChat';
 import { useContext } from '../../hooks/useContext';
 import ChatMessage from './ChatMessage';
+import ChatInput from './ChatInput';
+import ContextPanel from './ContextPanel';
 import { ChatSession, ChatMessage as ChatMessageType, ChatSettings } from '../../types/chat';
 import chatService from '../../services/chatService';
 
@@ -11,13 +14,15 @@ interface ChatViewProps {
   onNewSession?: () => void;
 }
 
-const ChatView: React.FC<ChatViewProps> = ({ sessionId, onNewSession }) => {
+const ChatView: React.FC<ChatViewProps> = ({ sessionId: propSessionId, onNewSession }) => {
+  const { sessionId: routeSessionId } = useParams<{ sessionId: string }>();
+  const sessionId = propSessionId || routeSessionId;
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [currentSession, setCurrentSession] = useState<ChatSession | null>(null);
   const [messages, setMessages] = useState<ChatMessageType[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [inputValue, setInputValue] = useState('');
-  const [chatSettings] = useState<ChatSettings>({
+  const [chatSettings, setChatSettings] = useState<ChatSettings>({
     model: 'gpt-4',
     temperature: 0.7,
     maxTokens: 2000,
@@ -33,6 +38,7 @@ const ChatView: React.FC<ChatViewProps> = ({ sessionId, onNewSession }) => {
   
   const { 
     context, 
+    updateContext,
     extractTasksFromMessage 
   } = useContext();
 
@@ -83,7 +89,6 @@ const ChatView: React.FC<ChatViewProps> = ({ sessionId, onNewSession }) => {
     
     setMessages(prev => [...prev, userMessage]);
     setIsLoading(true);
-    setInputValue('');
 
     try {
       // Send message with current settings and context
@@ -91,7 +96,7 @@ const ChatView: React.FC<ChatViewProps> = ({ sessionId, onNewSession }) => {
         content,
         settings: chatSettings,
         context_options: {
-          problemContext: context,
+          problemContext: context || undefined,
           documentIds: chatSettings.includeDocuments,
           enableWebBrowsing: chatSettings.webBrowsing,
           enableDeepResearch: chatSettings.deepResearch
@@ -163,16 +168,20 @@ const ChatView: React.FC<ChatViewProps> = ({ sessionId, onNewSession }) => {
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage(inputValue);
-    }
+  const handleSettingsChange = (newSettings: Partial<ChatSettings>) => {
+    setChatSettings(prev => ({ ...prev, ...newSettings }));
+  };
+
+  const handleAddDocument = (documentId: string) => {
+    setChatSettings(prev => ({
+      ...prev,
+      includeDocuments: [...prev.includeDocuments, documentId]
+    }));
   };
 
   if (!currentSession) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" height="100vh">
+      <Box display="flex" justifyContent="center" alignItems="center" height="100%">
         <CircularProgress />
         <Typography sx={{ ml: 2 }}>Loading chat session...</Typography>
       </Box>
@@ -180,7 +189,7 @@ const ChatView: React.FC<ChatViewProps> = ({ sessionId, onNewSession }) => {
   }
 
   return (
-    <Box display="flex" height="100vh">
+    <Box display="flex" height="100%" sx={{ overflow: 'hidden' }}>
       {/* Main Chat Area */}
       <Box flex={1} display="flex" flexDirection="column">
         {/* Messages Area */}
@@ -210,40 +219,27 @@ const ChatView: React.FC<ChatViewProps> = ({ sessionId, onNewSession }) => {
 
         <Divider />
 
-        {/* Simple Input Area for now */}
+        {/* Enhanced Input Area */}
         <Box p={2}>
-          <Box display="flex" alignItems="center" gap={1}>
-            <input
-              style={{
-                flex: 1,
-                padding: '12px',
-                border: '1px solid #ccc',
-                borderRadius: '8px',
-                outline: 'none'
-              }}
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder="Type your message... (Enter to send, Shift+Enter for new line)"
-              disabled={isLoading}
-            />
-            <button
-              onClick={() => handleSendMessage(inputValue)}
-              disabled={isLoading || !inputValue.trim()}
-              style={{
-                padding: '12px 24px',
-                backgroundColor: '#1976d2',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                opacity: isLoading || !inputValue.trim() ? 0.5 : 1
-              }}
-            >
-              Send
-            </button>
-          </Box>
+          <ChatInput
+            onSend={handleSendMessage}
+            disabled={isLoading}
+            settings={chatSettings}
+            onSettingsChange={handleSettingsChange}
+            onAddDocument={handleAddDocument}
+          />
         </Box>
+      </Box>
+
+      <Divider orientation="vertical" flexItem />
+
+      {/* Context Panel */}
+      <Box width={350}>
+        <ContextPanel 
+          context={context}
+          sessionId={currentSession?.id}
+          onUpdateContext={updateContext}
+        />
       </Box>
     </Box>
   );

@@ -14,6 +14,7 @@ interface UseChatReturn {
   loadSessions: () => Promise<void>;
   deleteSession: (sessionId: string) => Promise<void>;
   streamResponse: (stream: ReadableStream, onChunk: (chunk: string) => void) => Promise<void>;
+  clearError: () => void;
 }
 
 export const useChat = (): UseChatReturn => {
@@ -46,8 +47,9 @@ export const useChat = (): UseChatReturn => {
       setError(null);
       const session = await chatService.getSession(sessionId);
       setCurrentSession(session);
-      // Messages should be included in session response
-      setMessages(session.messages || []);
+      // Load messages separately
+      const messages = await chatService.getSessionMessages(sessionId);
+      setMessages(messages || []);
       return session;
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Failed to load session';
@@ -129,6 +131,10 @@ export const useChat = (): UseChatReturn => {
     }
   }, []);
 
+  const clearError = useCallback(() => {
+    setError(null);
+  }, []);
+
   return {
     loading,
     error,
@@ -140,6 +146,7 @@ export const useChat = (): UseChatReturn => {
     loadSession,
     loadSessions,
     deleteSession,
-    streamResponse
+    streamResponse,
+    clearError
   };
 };

@@ -6,10 +6,10 @@ from uuid import UUID
 class ChatSettings(BaseModel):
     model: str = "gpt-4"
     temperature: float = 0.7
-    max_tokens: int = 2000
-    web_browsing: bool = False
-    deep_research: bool = False
-    include_documents: List[str] = []
+    maxTokens: int = 2000
+    webBrowsing: bool = False
+    deepResearch: bool = False
+    includeDocuments: List[str] = []
 
 class ChatSessionCreate(BaseModel):
     title: Optional[str] = None
@@ -76,13 +76,13 @@ class TaskResponse(BaseModel):
     completed_at: Optional[datetime] = None
 
 class ContextUpdate(BaseModel):
-    problem_summary: Optional[str] = None
+    summary: Optional[str] = None
     current_goal: Optional[str] = None
     tasks: Optional[List[Dict[str, Any]]] = None
     relevant_documents: Optional[List[str]] = None
 
 class ChatContextUpdate(BaseModel):
-    problem_summary: Optional[str] = None
+    summary: Optional[str] = None
     current_goal: Optional[str] = None
     tasks: Optional[List[Dict[str, Any]]] = None
     relevant_documents: Optional[List[str]] = None
@@ -95,7 +95,7 @@ class StreamingResponse(BaseModel):
 
 class ContextResponse(BaseModel):
     session_id: UUID
-    problem_summary: Optional[str] = None
+    summary: Optional[str] = None
     current_goal: Optional[str] = None
     tasks: List[Dict[str, Any]] = []
     relevant_documents: List[str] = []

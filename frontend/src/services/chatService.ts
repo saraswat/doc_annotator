@@ -17,6 +17,11 @@ class ChatService {
     return response.data;
   }
 
+  async getSessionMessages(sessionId: string): Promise<ChatMessage[]> {
+    const response = await apiService.get(`/chat/sessions/${sessionId}/messages`);
+    return response.data;
+  }
+
   async deleteSession(sessionId: string): Promise<void> {
     await apiService.delete(`/chat/sessions/${sessionId}`);
   }

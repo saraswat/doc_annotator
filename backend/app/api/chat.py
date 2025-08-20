@@ -5,6 +5,7 @@ from sqlalchemy import select, desc
 from typing import List, Optional
 from uuid import UUID
 import json
+import logging
 from datetime import datetime
 
 from app.core.database import get_async_session
@@ -34,14 +35,30 @@ async def create_chat_session(
         title=session_data.title or f"Chat {datetime.now().strftime('%Y-%m-%d %H:%M')}"
     )
     db.add(session)
+    await db.commit()  # Commit first to generate session.id
+    await db.refresh(session)  # Refresh to get the generated ID
     
-    # Create initial context
+    # Create initial context with the now-available session.id
     context = ChatContext(session_id=session.id)
     db.add(context)
     
     await db.commit()
-    await db.refresh(session)
-    return session
+    await db.refresh(context)
+    
+    # Return manually constructed response to avoid lazy loading issues
+    return ChatSessionResponse(
+        id=session.id,
+        user_id=session.user_id,
+        title=session.title,
+        created_at=session.created_at,
+        updated_at=session.updated_at,
+        status=session.status,
+        session_metadata=session.session_metadata or {},
+        settings=session.settings or {},
+        message_count=session.message_count,
+        total_tokens=session.total_tokens,
+        messages=None  # No messages for new session
+    )
 
 @router.get("/sessions", response_model=List[ChatSessionResponse])
 async def get_chat_sessions(
@@ -62,7 +79,23 @@ async def get_chat_sessions(
     result = await db.execute(query)
     sessions = result.scalars().all()
     
-    return sessions
+    # Convert to response format manually to avoid lazy loading issues
+    return [
+        ChatSessionResponse(
+            id=session.id,
+            user_id=session.user_id,
+            title=session.title,
+            created_at=session.created_at,
+            updated_at=session.updated_at,
+            status=session.status,
+            session_metadata=session.session_metadata or {},
+            settings=session.settings or {},
+            message_count=session.message_count,
+            total_tokens=session.total_tokens,
+            messages=None  # Don't load messages for list view
+        )
+        for session in sessions
+    ]
 
 @router.get("/sessions/{session_id}", response_model=ChatSessionResponse)
 async def get_chat_session(
@@ -74,7 +107,7 @@ async def get_chat_session(
     # Get session
     result = await db.execute(
         select(ChatSession).where(
-            ChatSession.id == session_id,
+            ChatSession.id == str(session_id),
             ChatSession.user_id == current_user.id
         )
     )
@@ -86,16 +119,38 @@ async def get_chat_session(
     # Get messages
     result = await db.execute(
         select(ChatMessage)
-        .where(ChatMessage.session_id == session_id)
+        .where(ChatMessage.session_id == str(session_id))
         .order_by(ChatMessage.timestamp)
     )
     messages = result.scalars().all()
     
-    # Convert to response format
-    response_data = ChatSessionResponse.from_orm(session)
-    response_data.messages = [ChatMessageResponse.from_orm(msg) for msg in messages]
-    
-    return response_data
+    # Convert to response format manually to avoid lazy loading issues
+    return ChatSessionResponse(
+        id=session.id,
+        user_id=session.user_id,
+        title=session.title,
+        created_at=session.created_at,
+        updated_at=session.updated_at,
+        status=session.status,
+        session_metadata=session.session_metadata or {},
+        settings=session.settings or {},
+        message_count=session.message_count,
+        total_tokens=session.total_tokens,
+        messages=[
+            ChatMessageResponse(
+                id=msg.id,
+                session_id=msg.session_id,
+                role=msg.role,
+                content=msg.content,
+                timestamp=msg.timestamp,
+                tokens=msg.tokens,
+                model=msg.model,
+                message_metadata=msg.message_metadata or {},
+                document_references=msg.document_references or [],
+                annotation_references=msg.annotation_references or []
+            ) for msg in messages
+        ]
+    )
 
 @router.post("/sessions/{session_id}/messages")
 async def send_message(
@@ -108,7 +163,7 @@ async def send_message(
     # Verify session ownership
     result = await db.execute(
         select(ChatSession).where(
-            ChatSession.id == session_id,
+            ChatSession.id == str(session_id),
             ChatSession.user_id == current_user.id
         )
     )
@@ -117,63 +172,121 @@ async def send_message(
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
     
-    # For now, create a simple echo response
-    # In production, this would use the LLM client
+    # Stream LLM response
     async def generate():
         try:
+            from app.services.llm_client import get_llm_client
+            
             # Save user message
             user_message = ChatMessage(
-                session_id=session_id,
+                session_id=str(session_id),
                 role="user",
                 content=message_data.content,
                 model=message_data.settings.model
             )
             db.add(user_message)
             await db.commit()
+            await db.refresh(user_message)
             
-            # Simple echo response for testing
-            echo_response = f"Echo: {message_data.content}"
-            
-            # Save assistant message
-            assistant_message = ChatMessage(
-                session_id=session_id,
-                role="assistant",
-                content=echo_response,
-                model=message_data.settings.model
+            # Get recent messages for context
+            result = await db.execute(
+                select(ChatMessage)
+                .where(ChatMessage.session_id == str(session_id))
+                .order_by(ChatMessage.timestamp.desc())
+                .limit(20)
             )
-            db.add(assistant_message)
+            recent_messages = list(reversed(result.scalars().all()))
             
-            # Update session stats
-            session.message_count += 2
-            session.updated_at = datetime.utcnow()
-            await db.commit()
+            # Build conversation for LLM
+            conversation = []
             
-            # Stream response chunks
-            for i, char in enumerate(echo_response):
-                chunk = {
-                    'type': 'chunk',
-                    'content': char,
-                    'message_id': str(assistant_message.id)
-                }
-                yield f"data: {json.dumps(chunk)}\n\n"
-                
-                # Add small delay to simulate streaming
-                import asyncio
-                await asyncio.sleep(0.05)
+            # Add system prompt
+            conversation.append({
+                "role": "system",
+                "content": "You are a helpful AI assistant. Provide clear, accurate, and helpful responses."
+            })
             
-            # Final completion message
-            completion = {
-                'type': 'complete',
-                'message_id': str(assistant_message.id),
-                'content': echo_response,
-                'tokens': len(echo_response.split())
-            }
-            yield f"data: {json.dumps(completion)}\n\n"
+            # Add recent messages (excluding the just-added user message to avoid duplication)
+            for msg in recent_messages[:-1]:
+                conversation.append({
+                    "role": msg.role,
+                    "content": msg.content
+                })
+            
+            # Add current user message
+            conversation.append({
+                "role": "user",
+                "content": message_data.content
+            })
+            
+            # Get LLM client and stream response
+            llm_client = await get_llm_client()
+            full_response = ""
+            assistant_message = None
+            
+            async for chunk in llm_client.chat_completion(
+                messages=conversation,
+                model=message_data.settings.model,
+                temperature=message_data.settings.temperature,
+                max_tokens=message_data.settings.maxTokens,
+                stream=True
+            ):
+                if chunk.type == "chunk":
+                    full_response += chunk.content
+                    # Stream chunk to frontend
+                    chunk_data = {
+                        'type': 'chunk',
+                        'content': chunk.content
+                    }
+                    yield f"data: {json.dumps(chunk_data)}\n\n"
+                    
+                elif chunk.type == "complete":
+                    # Save assistant message to database
+                    assistant_message = ChatMessage(
+                        session_id=str(session_id),
+                        role="assistant",
+                        content=full_response,
+                        model=message_data.settings.model,
+                        tokens=(
+                            chunk.metadata.get("usage", {}).get("output_tokens") 
+                            if chunk.metadata and chunk.metadata.get("usage") 
+                            else len(full_response.split())
+                        )
+                    )
+                    db.add(assistant_message)
+                    
+                    # Update session stats
+                    session.message_count += 2  # user + assistant
+                    session.updated_at = datetime.utcnow()
+                    
+                    await db.commit()
+                    await db.refresh(assistant_message)
+                    
+                    # Final completion message
+                    completion = {
+                        'type': 'complete',
+                        'messageId': str(assistant_message.id),
+                        'content': chunk.content if chunk.content else "",
+                        'tokens': assistant_message.tokens or len(full_response.split())
+                    }
+                    yield f"data: {json.dumps(completion)}\n\n"
+                    break
+                    
+                elif chunk.type == "error":
+                    error_chunk = {
+                        'type': 'error',
+                        'error': chunk.error
+                    }
+                    yield f"data: {json.dumps(error_chunk)}\n\n"
+                    break
             
         except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error in chat streaming: {str(e)}")
             error_chunk = {
                 'type': 'error',
-                'error': str(e)
+                'error': f"Internal server error: {str(e)}"
             }
             yield f"data: {json.dumps(error_chunk)}\n\n"
     
@@ -197,7 +310,7 @@ async def get_session_context(
     # Verify session ownership
     result = await db.execute(
         select(ChatSession).where(
-            ChatSession.id == session_id,
+            ChatSession.id == str(session_id),
             ChatSession.user_id == current_user.id
         )
     )
@@ -208,7 +321,7 @@ async def get_session_context(
     
     # Get context
     result = await db.execute(
-        select(ChatContext).where(ChatContext.session_id == session_id)
+        select(ChatContext).where(ChatContext.session_id == str(session_id))
     )
     context = result.scalar_one_or_none()
     
@@ -235,7 +348,7 @@ async def update_session_context(
     # Verify session ownership
     result = await db.execute(
         select(ChatSession).where(
-            ChatSession.id == session_id,
+            ChatSession.id == str(session_id),
             ChatSession.user_id == current_user.id
         )
     )
@@ -246,7 +359,7 @@ async def update_session_context(
     
     # Get context
     result = await db.execute(
-        select(ChatContext).where(ChatContext.session_id == session_id)
+        select(ChatContext).where(ChatContext.session_id == str(session_id))
     )
     context = result.scalar_one_or_none()
     
@@ -281,7 +394,7 @@ async def delete_chat_session(
     """Delete a chat session."""
     result = await db.execute(
         select(ChatSession).where(
-            ChatSession.id == session_id,
+            ChatSession.id == str(session_id),
             ChatSession.user_id == current_user.id
         )
     )

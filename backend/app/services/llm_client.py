@@ -359,38 +359,43 @@ class LLMClient:
     
     def __init__(self):
         self.providers: Dict[str, BaseLLMProvider] = {}
-        self.config = get_llm_config()
         self._initialized = False
+        # Import settings here to avoid circular imports
+        from ..core.config import settings
+        self.settings = settings
     
     async def initialize(self) -> None:
         """Initialize all configured providers"""
         if self._initialized:
             return
         
-        # Initialize OpenAI provider
-        if self.config.openai.enabled:
+        # Initialize OpenAI provider if API key is available
+        if self.settings.OPENAI_API_KEY:
             try:
-                provider = OpenAIProvider(self.config.openai)
+                config = get_llm_config("openai")
+                provider = OpenAIProvider(config)
                 await provider.initialize()
                 self.providers["openai"] = provider
                 logger.info("OpenAI provider registered")
             except Exception as e:
                 logger.error(f"Failed to initialize OpenAI provider: {str(e)}")
         
-        # Initialize Anthropic provider
-        if self.config.anthropic.enabled:
+        # Initialize Anthropic provider if API key is available
+        if self.settings.ANTHROPIC_API_KEY:
             try:
-                provider = AnthropicProvider(self.config.anthropic)
+                config = get_llm_config("anthropic")
+                provider = AnthropicProvider(config)
                 await provider.initialize()
                 self.providers["anthropic"] = provider
                 logger.info("Anthropic provider registered")
             except Exception as e:
                 logger.error(f"Failed to initialize Anthropic provider: {str(e)}")
         
-        # Initialize custom endpoint provider
-        if self.config.custom.enabled:
+        # Initialize custom endpoint provider if configured
+        if self.settings.CUSTOM_LLM_API_KEY and self.settings.CUSTOM_LLM_BASE_URL:
             try:
-                provider = CustomEndpointProvider(self.config.custom)
+                config = get_llm_config("custom")
+                provider = CustomEndpointProvider(config)
                 await provider.initialize()
                 self.providers["custom"] = provider
                 logger.info("Custom endpoint provider registered")
@@ -403,6 +408,17 @@ class LLMClient:
         self._initialized = True
         logger.info(f"LLM client initialized with {len(self.providers)} providers")
     
+    def get_default_provider(self) -> Optional[BaseLLMProvider]:
+        """Get the default provider based on configuration"""
+        default_provider_name = self.settings.CHAT_DEFAULT_PROVIDER
+        provider = self.providers.get(default_provider_name)
+        
+        # Fallback to first available provider if default is not available
+        if not provider and self.providers:
+            provider = next(iter(self.providers.values()))
+        
+        return provider
+    
     def get_provider_for_model(self, model: str) -> Optional[BaseLLMProvider]:
         """Get the appropriate provider for a given model"""
         if model.startswith(("gpt-", "text-", "davinci", "curie", "babbage", "ada")):
@@ -410,7 +426,9 @@ class LLMClient:
         elif model.startswith(("claude-")):
             return self.providers.get("anthropic")
         else:
-            return self.providers.get("custom")
+            # Try custom provider first, then default, then any available
+            return (self.providers.get("custom") or 
+                   self.get_default_provider())
     
     async def chat_completion(
         self,

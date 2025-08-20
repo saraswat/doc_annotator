@@ -58,7 +58,7 @@ class ChatContext(Base):
     session_id = Column(String(36), ForeignKey("chat_sessions.id"), unique=True, nullable=False)
     
     # Problem solving context
-    problem_summary = Column(Text)
+    summary = Column(Text)
     current_goal = Column(String(500))
     tasks = Column(JSON, default=[])
     

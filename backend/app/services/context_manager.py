@@ -213,15 +213,15 @@ class ContextManager:
     ) -> None:
         """Update problem summary based on conversation"""
         # Simple approach: if no summary exists, use parts of the first user message
-        if not context.problem_summary and len(user_message) > 20:
+        if not context.summary and len(user_message) > 20:
             # Extract first sentence or first 150 characters
             sentences = re.split(r'[.!?]+', user_message)
             if sentences and len(sentences[0]) > 10:
-                context.problem_summary = sentences[0].strip()
+                context.summary = sentences[0].strip()
             else:
-                context.problem_summary = user_message[:150].strip()
+                context.summary = user_message[:150].strip()
                 if len(user_message) > 150:
-                    context.problem_summary += "..."
+                    context.summary += "..."
         
         # Update timestamp
         context.updated_at = datetime.utcnow()

@@ -10,7 +10,7 @@ import {
   MenuItem,
   IconButton
 } from '@mui/material';
-import { Description, ExitToApp, AdminPanelSettings } from '@mui/icons-material';
+import { Description, ExitToApp, AdminPanelSettings, Chat } from '@mui/icons-material';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
@@ -48,6 +48,14 @@ const Header: React.FC = () => {
 
         {user && (
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <Button
+              color="inherit"
+              startIcon={<Chat />}
+              onClick={() => navigate('/chat')}
+              sx={{ mr: 2 }}
+            >
+              Chat
+            </Button>
             {user.isAdmin && (
               <Button
                 color="inherit"
